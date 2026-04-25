@@ -1,0 +1,63 @@
+services:
+  api:
+    user: "${UID}:${GID}"
+    build:
+      context: ./api
+      dockerfile: docker/Dockerfile.dev
+    container_name: mi-cuerpo_api_dev
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    env_file:
+      - ./api/.env
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    depends_on:
+      - db
+      - redis
+    networks:
+      - mi-cuerpo_dev
+
+  app:
+    build:
+      context: ./app
+      dockerfile: docker/Dockerfile.dev
+    container_name: mi-cuerpo_app_dev
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    networks:
+      - mi-cuerpo_dev
+
+  db:
+    image: postgres:16-alpine
+    container_name: mi-cuerpo_db_dev
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - mi-cuerpo_dev
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: mi-cuerpo_cache_dev
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - mi-cuerpo_dev
+
+networks:
+  mi-cuerpo_dev:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:

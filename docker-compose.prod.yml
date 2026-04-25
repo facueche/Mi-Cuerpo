@@ -1,0 +1,65 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: docker/Dockerfile.prod
+    container_name: mi-cuerpo_api
+    restart: always
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    working_dir: /app
+    env_file:
+      - ./api/.env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - mi-cuerpo_core
+
+  db:
+    image: postgres:16-alpine
+    container_name: mi-cuerpo_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - mi-cuerpo_core
+
+  redis:
+    image: redis:7.2
+    container_name: mi-cuerpo_cache
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mi-cuerpo_core
+
+  app:
+    build:
+      context: ./app
+      dockerfile: docker/Dockerfile.prod
+    container_name: mi-cuerpo_app
+    restart: always
+    ports:
+      - "${APP_PORT}:80"
+    networks:
+      - mi-cuerpo_core
+
+networks:
+  mi-cuerpo_core:
+    name: mi-cuerpo_core
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
