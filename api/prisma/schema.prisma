@@ -12,3 +12,80 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id        String  @id @default(uuid())
+  email     String  @unique
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  googleId  String  @unique @map("google_id")
+  avatarUrl String? @map("avatar_url")
+
+  medicalEvents MedicalEvent[] @relation("UserMedicalEvents")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  lastLogin DateTime? @map("last_login")
+
+  @@map("users")
+}
+
+model MedicalEvent {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  doctorName  String?  @map("doctor_name")
+  institution String?  @map("institution")
+  description String?  @map("description") @db.Text
+
+  files   File[]
+  studies Study[] @relation("MedicalEventStudies")
+
+  userId String @map("user_id")
+  user   User   @relation("UserMedicalEvents", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("medical_events")
+}
+
+model Study {
+  id             String       @id @default(uuid())
+  category       String
+  date           DateTime
+  medicalEventId String       @map("medical_event_id")
+  medicalEvent   MedicalEvent @relation("MedicalEventStudies", fields: [medicalEventId], references: [id], onDelete: Cascade)
+
+  measurements Measurement[] @relation("StudyMeasurements")
+  rawOcrData   Json?         @map("raw_ocr_data")
+
+  @@index([date])
+  @@map("studies")
+}
+
+model Measurement {
+  id      String @id @default(uuid())
+  studyId String @map("study_id")
+  study   Study  @relation("StudyMeasurements", fields: [studyId], references: [id], onDelete: Cascade)
+
+  parameter    String
+  value        Float
+  unit         String
+  minReference Float?  @map("min_reference")
+  maxReference Float?  @map("max_reference")
+  isOutOfRange Boolean @default(false) @map("is_out_of_range")
+
+  @@index([parameter])
+  @@map("measurements")
+}
+
+model File {
+  id             String       @id @default(uuid())
+  url            String
+  fileType       String       @map("file_type")
+  medicalEventId String       @map("medical_event_id")
+  medicalEvent   MedicalEvent @relation(fields: [medicalEventId], references: [id])
+
+  @@map("files")
+}
