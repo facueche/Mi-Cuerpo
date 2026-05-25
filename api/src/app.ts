@@ -1,15 +1,19 @@
 import express from "express";
 
-import { loadApiEndpoints } from "./controllers/api";
+import healthRouter from "./core/health/infrastructure/routes";
+import { corsMiddleware } from "./core/shared/infrastructure/middlewares/cors.middleware";
 
 // Create Express server
 const app = express();
 
 // Express configuration
 app.set("port", process.env.PORT ?? 3000);
+
+app.use(corsMiddleware);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-loadApiEndpoints(app);
+app.use("/api/health", healthRouter);
 
 export default app;

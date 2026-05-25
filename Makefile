@@ -39,34 +39,34 @@ restart-one:
 install:
 	@echo "Instalando dependencias en API..."
 	cd api && npm install
-	docker exec -it $(API_CONT) npm install
+	docker exec -it --user root $(API_CONT) npm install
 	@echo "Instalando dependencias en APP..."
 	cd app && npm install
-	docker exec -it $(APP_CONT) npm install
+	docker exec -it --user root $(APP_CONT) npm install
 
 # Añadir paquetes (ej: make npm-install-api PKG=lodash)
 npm-install-api:
 	@if [ -z "$(PKG)" ]; then echo "Error: Debes especificar un paquete. Ej: make npm-install-api PKG=lodash"; exit 1; fi
 	cd api && npm install $(PKG)
-	docker exec -it $(API_CONT) npm install $(PKG)
+	docker exec -it --user root $(API_CONT) npm install $(PKG)
 	@echo "✅ Paquete instalado. Si el hot-reload no lo detecta, ejecuta: make restart-one SVC=api"
 
 npm-install-app:
 	@if [ -z "$(PKG)" ]; then echo "Error: Debes especificar un paquete. Ej: make npm-install-app PKG=lodash"; exit 1; fi
 	cd app && npm install $(PKG)
-	docker exec -it $(APP_CONT) npm install $(PKG)
+	docker exec -it --user root $(APP_CONT) npm install $(PKG)
 	@echo "✅ Paquete instalado. Si el hot-reload no lo detecta, ejecuta: make restart-one SVC=app"
 
 npm-install-dev-api:
 	@if [ -z "$(PKG)" ]; then echo "Error: Debes especificar un paquete. Ej: make npm-install-dev-api PKG=lodash"; exit 1; fi
 	cd api && npm install $(PKG) --save-dev
-	docker exec -it $(API_CONT) npm install $(PKG) --save-dev
+	docker exec -it --user root $(API_CONT) npm install $(PKG) --save-dev
 	@echo "✅ Paquete instalado. Si el hot-reload no lo detecta, ejecuta: make restart-one SVC=api"
 
 npm-install-dev-app:
 	@if [ -z "$(PKG)" ]; then echo "Error: Debes especificar un paquete. Ej: make npm-install-dev-app PKG=lodash"; exit 1; fi
 	cd app && npm install $(PKG) --save-dev
-	docker exec -it $(APP_CONT) npm install $(PKG) --save-dev
+	docker exec -it --user root $(APP_CONT) npm install $(PKG) --save-dev
 	@echo "✅ Paquete instalado. Si el hot-reload no lo detecta, ejecuta: make restart-one SVC=app"
 
 npm-uninstall-api:
