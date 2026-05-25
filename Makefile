@@ -42,7 +42,7 @@ install:
 	docker exec -it --user root $(API_CONT) npm install
 	@echo "Instalando dependencias en APP..."
 	cd app && npm install
-	docker exec -it --user root $(APP_CONT) npm install
+	docker exec -it $(APP_CONT) npm install
 
 # Añadir paquetes (ej: make npm-install-api PKG=lodash)
 npm-install-api:
