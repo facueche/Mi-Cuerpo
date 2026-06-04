@@ -4,14 +4,12 @@ import HttpClient from "@/services/api/http-client";
 import { storageService } from "@/services/storage/storage.service";
 import { useGoogleLogin, type CodeResponse } from "@react-oauth/google";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 const Login: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const httpClient = new HttpClient();
     const authService = new AuthService(httpClient.getHttpClient());
-    const navigate = useNavigate();
 
     const handleOnLogin = useGoogleLogin({
         flow: 'auth-code',
