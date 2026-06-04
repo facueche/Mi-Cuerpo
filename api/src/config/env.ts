@@ -8,5 +8,9 @@ export const env = {
     },
     cors: {
         allowedOrigins: (process.env.ALLOWED_ORIGINS || '').split(','),
+    },
+    google: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     }
 };

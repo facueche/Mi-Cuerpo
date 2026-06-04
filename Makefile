@@ -79,6 +79,9 @@ npm-uninstall-app:
 	cd app && npm uninstall $(PKG)
 	docker exec -it $(APP_CONT) npm uninstall $(PKG)
 
+shadcn-add:
+	cd app && npx shadcn@latest add $(PKG)
+
 # --- Prisma --- (ej: make prisma-new name=new-migration)
 prisma-new:
 	@if [ -z "$(name)" ]; then echo "Error: Debes especificar un nombre. Ej: make prisma-new name=new-migration"; exit 1; fi
