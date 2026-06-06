@@ -29,6 +29,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { storageService } from "@/services/storage/storage.service"
 import type { User } from "@/services/api/types/auth"
+import { referencePrompt } from "@/components/dashboard/ia-prompt"
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
@@ -48,17 +49,6 @@ export default function Dashboard() {
     // Consumimos tu hook core de exámenes (indicando un límite bajo ya que en el dashboard no listamos la tabla)
     const { uploadCSV } = useExaminations(1)
 
-    const promptReferencia = `Actúa como un extractor de datos médicos experto. Analiza el documento PDF adjunto y estructura TODOS sus biomarcadores en un formato CSV limpio, utilizando estrictamente las siguientes columnas separadas por comas:
-
-fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia
-
-Reglas críticas:
-1. "fecha" debe estar en formato DD/MM/AAAA.
-2. "descripcion" debe ser el título general del estudio (ej: Chequeo Anual).
-3. "categoria" debe clasificar el estudio (ej: Hematología, Química, Endocrinología).
-4. El "resultado" debe ser puramente numérico (usa punto para decimales). No incluyas las unidades dentro de esta columna.
-5. Devuelve ÚNICAMENTE el bloque de código CSV, sin textos introductorios ni explicaciones.`;
-
     const descargarPlantillaCSV = () => {
         const headers = "fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia\n";
         const filaEjemplo = "22/05/2026,Azar Laboratorios,Chequeo Anual Completo,Química Clínica,Colesterol LDL,155.0,mg/dL,Menor a 100.0\n";
@@ -73,7 +63,7 @@ Reglas críticas:
     };
 
     const copiarPrompt = () => {
-        navigator.clipboard.writeText(promptReferencia);
+        navigator.clipboard.writeText(referencePrompt);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
