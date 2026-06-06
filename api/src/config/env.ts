@@ -12,5 +12,8 @@ export const env = {
     google: {
         clientId: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    },
+    jwt: {
+        secret: process.env.JWT_SECRET || '',
     }
 };

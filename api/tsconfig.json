@@ -9,10 +9,18 @@
       "moduleResolution": "node",
       "sourceMap": true,
       "outDir": "dist",
-      "resolveJsonModule": true
+      "resolveJsonModule": true,
+      "types": [
+        "node",
+        "jest",
+        // "multer"
+      ]
     },
     "include": [
       "src/**/*",
       "test/**/*",
+    ],
+    "files": [
+      "src/core/shared/infrastructure/types/types.d.ts"
     ]
   }
