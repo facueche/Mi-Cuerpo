@@ -12,17 +12,19 @@ import {
     ArrowUpRight,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    Trash2,
+    X,
+    AlertTriangle
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useExaminations } from "@/hooks/use-examinations" // Asegúrate de apuntar a la ruta correcta de tus hooks
+import { useState } from "react"
+import { useExaminations } from "@/hooks/use-examinations"
 
 export default function Examinations() {
     const navigate = useNavigate()
-
     const PER_PAGE = 5;
 
-    // Inyectamos el límite de items por página (en tu mock tenías 2, lo dejamos igual)
     const {
         examinations: estudios,
         meta,
@@ -31,11 +33,41 @@ export default function Examinations() {
         loading,
         error,
         goToNextPage,
-        goToPrevPage
+        goToPrevPage,
+        deleteExamination // <-- Inyectamos la acción nativa de borrado
     } = useExaminations(PER_PAGE)
 
+    // Estados para el control del Modal de confirmación
+    const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [selectedTitle, setSelectedTitle] = useState<string>("")
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState<string | null>(null)
+
+    // Manejador que abre el modal de borrado de forma segura
+    const handleOpenDeleteModal = (e: React.MouseEvent, id: string, title: string) => {
+        e.stopPropagation(); // Previene que la card navegue al detalle
+        setSelectedId(id);
+        setSelectedTitle(title);
+        setDeleteError(null);
+    };
+
+    // Confirmación definitiva y ejecución asíncrona
+    const handleConfirmDelete = async () => {
+        if (!selectedId) return;
+        setIsDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteExamination(selectedId);
+            setSelectedId(null); // Cierra el modal con éxito
+        } catch (err: any) {
+            setDeleteError(err.message || "No se pudo procesar la eliminación en el servidor.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
-        <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8 flex flex-col justify-between h-full">
+        <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8 flex flex-col justify-between h-full relative">
 
             {/* Sección superior: Controles e Historial */}
             <div className="space-y-6">
@@ -59,7 +91,7 @@ export default function Examinations() {
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
                 </div>
 
-                {/* Feedback de error de red o base de datos */}
+                {/* Feedback de error global */}
                 {error && (
                     <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-sm font-medium">
                         {error}
@@ -80,9 +112,9 @@ export default function Examinations() {
                             <Card
                                 key={estudio.id}
                                 onClick={() => navigate(`/estudios/${estudio.id}`)}
-                                className="hover:border-blue-200 transition-all cursor-pointer dark:hover:border-blue-900"
+                                className="hover:border-blue-200 transition-all cursor-pointer dark:hover:border-blue-900 group"
                             >
-                                <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <CardContent className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
                                     {/* Info Principal */}
                                     <div className="flex items-start gap-4">
@@ -113,7 +145,7 @@ export default function Examinations() {
                                     </div>
 
                                     {/* Status / Alertas e Interacción */}
-                                    <div className="flex items-center justify-between border-t pt-3 sm:border-t-0 sm:pt-0 sm:justify-end gap-4 border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between border-t pt-3 md:border-t-0 md:pt-0 md:justify-end gap-2 border-slate-100 dark:border-slate-800">
                                         {estudio.alertas > 0 ? (
                                             <div className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-full">
                                                 <AlertCircle className="h-3.5 w-3.5" />
@@ -124,12 +156,25 @@ export default function Examinations() {
                                                 Valores Óptimos
                                             </div>
                                         )}
-                                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-blue-600 p-0 sm:p-2" onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigate(`/estudios/${estudio.id}`);
-                                        }}>
-                                            Ver PDF <ArrowUpRight className="h-4 w-4 ml-1" />
-                                        </Button>
+
+                                        <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-blue-600 p-2" onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/estudios/${estudio.id}`);
+                                            }}>
+                                                Ver PDF <ArrowUpRight className="h-4 w-4 ml-1" />
+                                            </Button>
+
+                                            {/* Botón Destructivo de Borrado */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                                                onClick={(e) => handleOpenDeleteModal(e, estudio.id, estudio.descripcion)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
 
                                 </CardContent>
@@ -139,10 +184,9 @@ export default function Examinations() {
                 </div>
             </div>
 
-            {/* CONTROLES DE PAGINACIÓN COMPLEMENTARIOS */}
+            {/* CONTROLES DE PAGINACIÓN */}
             {meta.total > 0 && (
                 <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    {/* Cálculos basados en la metadata real provista por el backend */}
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                         Mostrando <span className="font-semibold text-slate-900 dark:text-white">{((meta.page - 1) * meta.limit) + 1}</span> a{" "}
                         <span className="font-semibold text-slate-900 dark:text-white">
@@ -151,7 +195,6 @@ export default function Examinations() {
                         de <span className="font-semibold text-slate-900 dark:text-white">{meta.total}</span> estudios
                     </div>
 
-                    {/* Botones de Navegación */}
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
@@ -181,6 +224,75 @@ export default function Examinations() {
                     </div>
                 </div>
             )}
+
+            {/* --- MODAL DIÁLOGO DE CONFIRMACIÓN DE BORRADO (UX SEGURA) --- */}
+            {selectedId && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <Card className="w-full max-w-sm border-slate-200 shadow-xl dark:border-slate-800 bg-white dark:bg-slate-950 relative overflow-hidden animate-in zoom-in-95 duration-200">
+
+                        <button
+                            disabled={isDeleting}
+                            onClick={() => setSelectedId(null)}
+                            className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-700 transition-colors"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+
+                        <div className="p-6 pt-7 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-full shrink-0">
+                                    <AlertTriangle className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">¿Eliminar estudio médico?</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Esta acción no se puede deshacer.</p>
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg dark:bg-slate-900 dark:border-slate-800">
+                                <p className="text-xs text-slate-400 font-medium">Elemento seleccionado:</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5 truncate">{selectedTitle}</p>
+                            </div>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Se eliminarán de forma permanente todos los biomarcadores, métricas agregadas y alertas relacionales asociadas a este evento clínico.
+                            </p>
+
+                            {deleteError && (
+                                <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-xs text-red-600 dark:text-red-400 font-medium leading-normal">
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isDeleting}
+                                    onClick={() => setSelectedId(null)}
+                                    className="border-slate-200 dark:border-slate-800"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={isDeleting}
+                                    onClick={handleConfirmDelete}
+                                    className="bg-red-600 hover:bg-red-700 text-white min-w-[80px]"
+                                >
+                                    {isDeleting ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin mx-auto" />
+                                    ) : (
+                                        "Eliminar"
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
         </div>
     )
 }

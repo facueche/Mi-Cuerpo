@@ -28,5 +28,6 @@ export interface CreateExaminationDTO {
 export default interface ExaminationRepository {
     getAll(data: GetAllParams): Promise<[number, MedicalEvent[]]>
     createWithDetails(data: CreateExaminationDTO): Promise<MedicalEvent>
-    getById(id: string, userId: string): Promise<MedicalEvent>
+    getById(id: string): Promise<MedicalEvent>
+    deleteById(id: string): Promise<void>;
 }

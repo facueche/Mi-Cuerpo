@@ -87,6 +87,31 @@ export function useExaminations(initialLimit = 5) {
         }
     };
 
+    const deleteExamination = async (id: string): Promise<void> => {
+        setLoading(true);
+        setError(null);
+        try {
+            await examinationsService.deleteById(id);
+
+            // Si eliminamos el último elemento de una página (ej: pág 3) y queda vacía,
+            // retrocedemos automáticamente para evitar quedarnos en una vista sin registros
+            setMeta(prev => {
+                const isLastItemInPage = examinations.length === 1;
+                const newPage = (isLastItemInPage && prev.page > 1) ? prev.page - 1 : prev.page;
+                return { ...prev, page: newPage };
+            });
+
+            await fetchExaminations(); // Re-sincroniza los listados vigentes
+        } catch (err: any) {
+            console.error("Error deleting examination:", err);
+            const errMsg = err.response?.data?.message || "No se pudo eliminar el estudio seleccionado.";
+            setError(errMsg);
+            throw new Error(errMsg); // Lo relanzamos para capturarlo en la UI mediante un Toast o modal
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         examinations,
         meta,
@@ -97,6 +122,7 @@ export function useExaminations(initialLimit = 5) {
         goToNextPage,
         goToPrevPage,
         uploadCSV,
+        deleteExamination,
         refresh: fetchExaminations
     };
 }

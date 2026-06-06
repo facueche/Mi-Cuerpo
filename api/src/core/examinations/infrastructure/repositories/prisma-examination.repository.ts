@@ -88,11 +88,10 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
         });
     }
 
-    async getById(id: string, userId: string): Promise<MedicalEvent> {
-        const event = await prisma.medicalEvent.findFirst({
+    async getById(id: string): Promise<MedicalEvent> {
+        const event = await prisma.medicalEvent.findUnique({
             where: {
                 id: id,
-                userId: userId // Regla estricta de seguridad multi-tenant
             },
             include: {
                 files: true,
@@ -113,5 +112,25 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
         }
 
         return event;
+    }
+
+    async deleteById(id: string): Promise<void> {
+        await prisma.$transaction(async (tx) => {
+            await tx.measurement.deleteMany({
+                where: {
+                    study: {
+                        medicalEventId: id
+                    }
+                }
+            });
+
+            await tx.study.deleteMany({
+                where: { medicalEventId: id }
+            });
+
+            await tx.medicalEvent.delete({
+                where: { id }
+            });
+        });
     }
 }

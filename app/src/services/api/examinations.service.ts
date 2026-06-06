@@ -40,4 +40,9 @@ export default class ExaminationsService {
         const response = await this.httpClient.get<ExaminationDetailResponse>(`/examinations/${id}`);
         return response.data;
     }
+
+    public async deleteById(id: string): Promise<{ message: string }> {
+        const response = await this.httpClient.delete<{ message: string }>(`/examinations/${id}`);
+        return response.data;
+    }
 }

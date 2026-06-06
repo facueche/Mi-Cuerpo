@@ -30,6 +30,7 @@ import { Line } from 'react-chartjs-2';
 import { storageService } from "@/services/storage/storage.service"
 import type { User } from "@/services/api/types/auth"
 import { referencePrompt } from "@/components/dashboard/ia-prompt"
+import { csvContent } from "@/components/dashboard/csv-content"
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
@@ -50,10 +51,6 @@ export default function Dashboard() {
     const { uploadCSV } = useExaminations(1)
 
     const descargarPlantillaCSV = () => {
-        const headers = "fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia\n";
-        const filaEjemplo = "22/05/2026,Azar Laboratorios,Chequeo Anual Completo,Química Clínica,Colesterol LDL,155.0,mg/dL,Menor a 100.0\n";
-        const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(headers + filaEjemplo);
-
         const link = document.createElement("a");
         link.setAttribute("href", csvContent);
         link.setAttribute("download", "plantilla_estudio_salud.csv");
@@ -273,7 +270,7 @@ export default function Dashboard() {
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{cards.porcentajeOptimos}%</div>
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{cards.totalEstudios > 0 ? `${cards.porcentajeOptimos}%` : "Sin datos"}</div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Biomarcadores normales</p>
                     </CardContent>
                 </Card>

@@ -4,6 +4,7 @@ import AuthMiddleware from '../../../shared/infrastructure/middlewares/auth.midd
 import multer from 'multer';
 import UploadExaminationController from '../controllers/upload-examination.controller';
 import GetExaminationDetailController from '../controllers/get-examination-detail.controller';
+import DeleteExaminationController from '../controllers/delete-examination.controller';
 
 const examinationRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -11,5 +12,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 examinationRouter.get('/', AuthMiddleware.handle, GetExaminationsController.handle);
 examinationRouter.post('/upload', AuthMiddleware.handle, upload.single('file'), UploadExaminationController.handle);
 examinationRouter.get('/:id', AuthMiddleware.handle, GetExaminationDetailController.handle);
+examinationRouter.delete("/:id", AuthMiddleware.handle, DeleteExaminationController.handle);
 
 export default examinationRouter;

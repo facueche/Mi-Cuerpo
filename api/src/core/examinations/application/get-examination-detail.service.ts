@@ -1,5 +1,5 @@
-// api/src/core/examinations/application/get-examination-detail.service.ts
 import { Prisma } from "../../../generated/prisma/client";
+import UnauthorizedError from "../domain/errors/unathorized.error";
 import type ExaminationRepository from "../domain/repositories/examination.repository";
 
 interface GetDetailParams {
@@ -25,9 +25,13 @@ export default class GetExaminationDetailService {
     ) { }
 
     async handle(params: GetDetailParams) {
-        const event = await this.examinationRepository.getById(params.id, params.userId);
+        const examination = await this.examinationRepository.getById(params.id);
 
-        const fullEvent = event as MedicalEventDetailWithRelations;
+        if (examination.userId !== params.userId) {
+            throw new UnauthorizedError("No tiene permisos para ver este estudio clínico.");
+        }
+
+        const fullEvent = examination as MedicalEventDetailWithRelations;
 
         // 1. Calcular estadísticas rápidas del estudio para el header de la vista de detalle
         let totalAlertas = 0;
