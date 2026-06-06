@@ -5,6 +5,7 @@ import { corsMiddleware } from "./core/shared/infrastructure/middlewares/cors.mi
 import authRouter from "./core/auth/infrastructure/routes";
 import examinationRouter from "./core/examinations/infrastructure/routes";
 import dashboardRouter from "./core/dashboard/infrastructure/routes";
+import metricsRouter from "./core/metrics/infrastructure/routes";
 
 // Create Express server
 const app = express();
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/examinations", examinationRouter);
+app.use("/api/metrics", metricsRouter);
 app.use("/api/health", healthRouter);
 
 export default app;
