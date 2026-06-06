@@ -1,5 +1,6 @@
 import { prisma } from "../../../../config/prisma";
 import { MedicalEvent } from "../../../../generated/prisma/client";
+import MedicalEventNotFoundError from "../../domain/errors/medical-event-not-found.error";
 import ExaminationRepository, { CreateExaminationDTO, GetAllParams } from "../../domain/repositories/examination.repository";
 
 export default class PrismaExaminationRepository implements ExaminationRepository {
@@ -85,5 +86,32 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
                 }
             }
         });
+    }
+
+    async getById(id: string, userId: string): Promise<MedicalEvent> {
+        const event = await prisma.medicalEvent.findFirst({
+            where: {
+                id: id,
+                userId: userId // Regla estricta de seguridad multi-tenant
+            },
+            include: {
+                files: true,
+                studies: {
+                    include: {
+                        measurements: {
+                            orderBy: {
+                                parameter: 'asc' // Ordenamiento alfabético por biomarcador
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!event) {
+            throw new MedicalEventNotFoundError();
+        }
+
+        return event;
     }
 }
