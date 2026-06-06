@@ -20,6 +20,8 @@ import { useExaminations } from "@/hooks/use-examinations" // Asegúrate de apun
 export default function Examinations() {
     const navigate = useNavigate()
 
+    const PER_PAGE = 5;
+
     // Inyectamos el límite de items por página (en tu mock tenías 2, lo dejamos igual)
     const {
         examinations: estudios,
@@ -30,7 +32,7 @@ export default function Examinations() {
         error,
         goToNextPage,
         goToPrevPage
-    } = useExaminations(2)
+    } = useExaminations(PER_PAGE)
 
     return (
         <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8 flex flex-col justify-between h-full">
