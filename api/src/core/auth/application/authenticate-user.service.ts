@@ -1,7 +1,7 @@
-// src/application/use-cases/AuthenticateUser.ts
 import jwt from 'jsonwebtoken';
 import UserRepository from '../domain/repositories/user.repository';
 import GoogleAuthService from '../../../external-services/google/google-auth.service';
+import { env } from '../../../config/env';
 
 export class AuthenticateUser {
     constructor(
@@ -20,7 +20,7 @@ export class AuthenticateUser {
             avatarUrl: payload.picture,
         });
 
-        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user.id }, env.jwt.secret, { expiresIn: '7d' });
 
         return { user, token };
     }
