@@ -1,26 +1,26 @@
 import { prisma } from "../../../../config/prisma";
+import { EncryptionService } from "../../../shared/application/encryption.service";
 import DashboardRepository, { DashboardMetricsDTO } from "../../domain/repositories/dashboard.repository";
 
 export default class PrismaDashboardRepository implements DashboardRepository {
     async getMetrics(userId: string): Promise<DashboardMetricsDTO> {
 
-        // Ejecutamos consultas independientes optimizadas en paralelo
         const [
             totalExaminations,
             totalMeasurements,
             outOfRangeMeasurements,
-            rawMeasurementsHistory,
+            rawMeasurements,
             rawCategories
         ] = await Promise.all([
-            // 1. Total de eventos médicos
+            // 1. Total de eventos médicos (No sensible al cifrado textual)
             prisma.medicalEvent.count({ where: { userId } }),
 
-            // 2. Total de mediciones hechas en toda su historia
+            // 2. Total de mediciones (No sensible al cifrado textual)
             prisma.measurement.count({
                 where: { study: { medicalEvent: { userId } } }
             }),
 
-            // 3. Total de mediciones que dieron alerta
+            // 3. Total de mediciones alertas (No sensible al cifrado textual, es un booleano)
             prisma.measurement.count({
                 where: {
                     isOutOfRange: true,
@@ -28,11 +28,10 @@ export default class PrismaDashboardRepository implements DashboardRepository {
                 }
             }),
 
-            // 4. Historial temporal de biomarcadores core (ej: Colesterol y Glucemia para las curvas)
+            // 4. Historial de biomarcadores core (Traemos las mediciones y las filtramos tras desencriptar)
             prisma.measurement.findMany({
                 where: {
-                    study: { medicalEvent: { userId } },
-                    parameter: { in: ["Colesterol Total", "Glucemia en Ayunas", "Triglicéridos"], mode: 'insensitive' }
+                    study: { medicalEvent: { userId } }
                 },
                 select: {
                     parameter: true,
@@ -40,47 +39,58 @@ export default class PrismaDashboardRepository implements DashboardRepository {
                     isOutOfRange: true,
                     study: { select: { date: true } }
                 },
-                orderBy: { study: { date: 'asc' } } // Cronología ascendente para el gráfico de líneas
+                orderBy: { study: { date: 'asc' } }
             }),
 
-            // 5. Traer las categorías de los estudios para agruparlas
+            // 5. Categorías para agrupar (Se desencriptan para agruparse correctamente)
             prisma.study.findMany({
                 where: { medicalEvent: { userId } },
                 select: { category: true }
             })
         ]);
 
-        // --- Post-procesamiento ligero de datos agregados ---
+        // --- Post-procesamiento analítico con desencriptación en memoria ---
 
-        // Calcular porcentaje de mediciones óptimas
-        const optimalStudiesPercentage = totalMeasurements > 0
-            ? Math.round(((totalMeasurements - outOfRangeMeasurements) / totalMeasurements) * 100)
-            : 100;
-
-        // Agrupar historial por parámetro clínico
+        // Filtrar y agrupar los biomarcadores Core unificados en memoria para no romper tus gráficos
+        const targetCoreBiomarkers = ["Colesterol Total", "Glucemia", "Triglicéridos"];
         const biomarkerMap = new Map<string, DashboardMetricsDTO["biomarkerHistory"][number]["history"]>();
-        for (const m of rawMeasurementsHistory) {
-            if (!biomarkerMap.has(m.parameter)) biomarkerMap.set(m.parameter, []);
-            biomarkerMap.get(m.parameter)!.push({
-                date: m.study.date,
-                value: m.value,
-                isOutOfRange: m.isOutOfRange
-            });
+
+        for (const m of rawMeasurements) {
+            const decParameter = EncryptionService.decrypt(m.parameter);
+            if (decParameter && targetCoreBiomarkers.includes(decParameter)) {
+                if (!biomarkerMap.has(decParameter)) {
+                    biomarkerMap.set(decParameter, []);
+                }
+                biomarkerMap.get(decParameter)!.push({
+                    date: m.study.date,
+                    value: m.value,
+                    isOutOfRange: m.isOutOfRange
+                });
+            }
         }
+
         const biomarkerHistory = Array.from(biomarkerMap.entries()).map(([parameter, history]) => ({
             parameter,
             history
         }));
 
-        // Agrupar y contar distribución de categorías para el gráfico de torta
+        // Contar distribución de categorías desencriptadas para el gráfico de torta
         const categoryCounts: Record<string, number> = {};
         for (const s of rawCategories) {
-            categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1;
+            const decCategory = EncryptionService.decrypt(s.category);
+            if (decCategory) {
+                categoryCounts[decCategory] = (categoryCounts[decCategory] || 0) + 1;
+            }
         }
+
         const categoryDistribution = Object.entries(categoryCounts).map(([category, count]) => ({
             category,
             count
         }));
+
+        const optimalStudiesPercentage = totalMeasurements > 0
+            ? Math.round(((totalMeasurements - outOfRangeMeasurements) / totalMeasurements) * 100)
+            : 100;
 
         return {
             totalExaminations,

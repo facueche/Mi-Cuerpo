@@ -142,6 +142,7 @@ help:
 	@echo "  npm-install-app PKG=x     Instala un paquete en la APP"
 	@echo "  npm-install-dev-api PKG=x Instala un paquete de desarrollo en la API"
 	@echo "  npm-install-dev-app PKG=x Instala un paquete de desarrollo en la APP"
+	@echo "  shadcn-add PKG=x          Instala un paquete de shadcn en la APP"
 	@echo ""
 	@echo "Base de Datos y Prisma:"
 	@echo "  prisma-new name=x   Crea una nueva migración con un nombre"

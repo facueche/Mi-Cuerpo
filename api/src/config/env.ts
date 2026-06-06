@@ -15,5 +15,9 @@ export const env = {
     },
     jwt: {
         secret: process.env.JWT_SECRET || '',
-    }
+    },
+    encryption: {
+        key: process.env.ENCRYPTION_KEY || '',
+        blindIndexPepper: process.env.BLIND_INDEX_PEPPER || '',
+    },
 };
