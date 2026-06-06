@@ -14,7 +14,7 @@ const NotFoundPage = () => <div className="p-8 text-center"><h1>404 - Página no
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <Navigate to="/auth/login" replace />,
+        element: <Navigate to="/dashboard" replace />,
     },
     {
         element: <PublicRoute />,

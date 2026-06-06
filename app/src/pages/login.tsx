@@ -4,12 +4,18 @@ import HttpClient from "@/services/api/http-client";
 import { storageService } from "@/services/storage/storage.service";
 import { useGoogleLogin, type CodeResponse } from "@react-oauth/google";
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Login: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const navigate = useNavigate();
+    const location = useLocation();
 
     const httpClient = new HttpClient();
     const authService = new AuthService(httpClient.getHttpClient());
+
+    const from = (location.state as any)?.from?.pathname || "/inicio";
 
     const handleOnLogin = useGoogleLogin({
         flow: 'auth-code',
@@ -22,7 +28,8 @@ const Login: React.FC = () => {
                 storageService.setToken(response.token);
                 storageService.setUser(response.user);
 
-                console.log("response", response);
+                toast.success(`${response.user.firstName}, bienvenido a Tu Salud!`);
+                navigate(from, { replace: true });
             } catch (err: any) {
                 console.error(err.message);
             } finally {

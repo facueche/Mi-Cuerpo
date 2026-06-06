@@ -6,8 +6,12 @@ import {
     TrendingUp,
     AlertTriangle,
     Upload,
-    CheckCircle2
+    CheckCircle2,
+    FileSpreadsheet,
+    Copy,
+    Check
 } from "lucide-react"
+import { useState } from "react"
 
 import {
     Chart as ChartJS,
@@ -32,6 +36,40 @@ ChartJS.register(
 
 export default function Dashboard() {
     const userName = "Facundo"
+    const [copied, setCopied] = useState(false)
+
+    // Prompt estandarizado para que la IA transforme cualquier PDF médico al CSV esperado
+    const promptReferencia = `Actúa como un extractor de datos médicos experto. Analiza el documento PDF adjunto y estructura TODOS sus biomarcadores en un formato CSV limpio, utilizando estrictamente las siguientes columnas separadas por comas:
+
+fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia
+
+Reglas críticas:
+1. "fecha" debe estar en formato DD/MM/AAAA.
+2. "descripcion" debe ser el título general del estudio (ej: Chequeo Anual).
+3. "categoria" debe clasificar el estudio (ej: Hematología, Química, Endocrinología).
+4. El "resultado" debe ser puramente numérico (usa punto para decimales). No incluyas las unidades dentro de esta columna.
+5. Devuelve ÚNICAMENTE el bloque de código CSV, sin textos introductorios ni explicaciones.`;
+
+    // Función para descargar la plantilla CSV generada al vuelo (Client-side)
+    const descargarPlantillaCSV = () => {
+        const headers = "fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia\n";
+        const filaEjemplo = "22/05/2026,Azar Laboratorios,Chequeo Anual Completo,Química Clínica,Colesterol LDL,155.0,mg/dL,Menor a 100.0\n";
+        const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(headers + filaEjemplo);
+
+        const link = document.createElement("a");
+        link.setAttribute("href", csvContent);
+        link.setAttribute("download", "plantilla_estudio_salud.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Función para copiar el prompt al portapapeles con feedback de éxito
+    const copiarPrompt = () => {
+        navigator.clipboard.writeText(promptReferencia);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const chartData = {
         labels: ['Ene 25', 'Jul 25', 'May 26'],
@@ -53,7 +91,6 @@ export default function Dashboard() {
         ],
     };
 
-    // 2. Opciones de Configuración Visual y de Comportamiento del Gráfico
     const chartOptions: ChartOptions<'line'> = {
         responsive: true,
         maintainAspectRatio: false,
@@ -108,8 +145,8 @@ export default function Dashboard() {
     return (
         <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8">
 
-            {/* Encabezado Principal */}
-            <header className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            {/* Encabezado Principal Modificado con Barra de Herramientas de Referencia */}
+            <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center border-b border-slate-200/60 dark:border-slate-800 pb-5">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                         Hola, {userName}
@@ -118,9 +155,39 @@ export default function Dashboard() {
                         Este es el estado general de tu salud basado en tus últimos estudios analizados.
                     </p>
                 </div>
-                <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">
-                    <Upload className="h-4 w-4" /> Importar Estudio (CSV)
-                </Button>
+
+                {/* Contenedor de Acciones Flex-wrap adaptativo para Mobile y Desktop */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={descargarPlantillaCSV}
+                        className="flex items-center gap-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800"
+                    >
+                        <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Plantilla CSV
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copiarPrompt}
+                        className="flex items-center gap-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800 min-w-[140px]"
+                    >
+                        {copied ? (
+                            <>
+                                <Check className="h-4 w-4 text-emerald-500" /> Copiado
+                            </>
+                        ) : (
+                            <>
+                                <Copy className="h-4 w-4 text-blue-500" /> Copiar Prompt IA
+                            </>
+                        )}
+                    </Button>
+
+                    <Button size="sm" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">
+                        <Upload className="h-4 w-4" /> Importar Estudio (CSV)
+                    </Button>
+                </div>
             </header>
 
             {/* Grid de Métricas Clave de Primer Vistazo */}
@@ -206,7 +273,6 @@ export default function Dashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="h-[280px] w-full pt-2">
-                        {/* Renderizado Seguro mediante Canvas Nativo controlado por Chart.js */}
                         <Line data={chartData} options={chartOptions} />
                     </CardContent>
                 </Card>
