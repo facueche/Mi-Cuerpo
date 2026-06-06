@@ -8,10 +8,13 @@ import {
     Copy,
     Check,
     Loader2,
-    HeartPulse
+    HeartPulse,
+    X,
+    FileText
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useDashboard } from "@/hooks/use-dashboard"
+import { useExaminations } from "@/hooks/use-examinations"
 
 import {
     Chart as ChartJS,
@@ -27,21 +30,23 @@ import { Line } from 'react-chartjs-2';
 import { storageService } from "@/services/storage/storage.service"
 import type { User } from "@/services/api/types/auth"
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Tooltip,
-    Filler
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 export default function Dashboard() {
     const user = storageService.getUser() as User;
     const userName = `${user?.firstName} ${user?.lastName}` || "Usuario";
     const [copied, setCopied] = useState(false)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [uploadSuccess, setUploadSuccess] = useState(false)
+    const [localUploadError, setLocalUploadError] = useState<string | null>(null)
+    const [isLocalUploading, setIsLocalUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const { metrics, loading, error } = useDashboard()
+    // Hook del Dashboard para las métricas e indicadores generales
+    const { metrics, loading: dashboardLoading, error: dashboardError, refresh: refreshDashboard } = useDashboard()
+
+    // Consumimos tu hook core de exámenes (indicando un límite bajo ya que en el dashboard no listamos la tabla)
+    const { uploadCSV } = useExaminations(1)
 
     const promptReferencia = `Actúa como un extractor de datos médicos experto. Analiza el documento PDF adjunto y estructura TODOS sus biomarcadores en un formato CSV limpio, utilizando estrictamente las siguientes columnas separadas por comas:
 
@@ -73,8 +78,49 @@ Reglas críticas:
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // --- PROCESAMIENTO DINÁMICO DEL GRÁFICO (CHART.JS) ---
-    // Buscamos si el backend devolvió el historial del Índice HOMA-IR, de lo contrario tomamos el primer biomarcador que encuentre para graficar
+    // Procesador de la subida usando tu función nativa
+    const handleProcessFile = async (file: File) => {
+        if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
+            setLocalUploadError("El formato del archivo debe ser estrictamente CSV.");
+            return;
+        }
+
+        setIsLocalUploading(true);
+        setLocalUploadError(null);
+        setUploadSuccess(false);
+
+        try {
+            // Llamamos a tu función nativa del hook useExaminations
+            await uploadCSV(file);
+
+            setUploadSuccess(true);
+            // Sincronizamos en segundo plano los gráficos e indicadores del dashboard
+            refreshDashboard();
+
+            setTimeout(() => {
+                setIsModalOpen(false);
+                setUploadSuccess(false);
+            }, 1800);
+        } catch (err: any) {
+            // El error ya viene formateado y masticado desde tu hook useExaminations
+            setLocalUploadError(err.message || "Error al procesar el archivo en el servidor.");
+        } finally {
+            setIsLocalUploading(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (files && files.length > 0) handleProcessFile(files[0]);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) handleProcessFile(files[0]);
+    };
+
+    // --- PROCESAMIENTO DINÁMICO DEL GRÁFICO ---
     const targetBiomarker = metrics?.graficoEvolucion.find(b => b.parameter.toLowerCase().includes("homa-ir"))
         || metrics?.graficoEvolucion[0];
 
@@ -91,7 +137,7 @@ Reglas críticas:
                 pointBackgroundColor: (context: any) => {
                     const index = context.dataIndex;
                     const isAlert = targetBiomarker?.data[index]?.alerta;
-                    return isAlert ? '#ef4444' : '#10b981'; // Rojo si es alerta, verde si es óptimo
+                    return isAlert ? '#ef4444' : '#10b981';
                 },
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
@@ -131,8 +177,7 @@ Reglas críticas:
         interaction: { mode: 'index', intersect: false }
     };
 
-    // 1. Render de Carga Global
-    if (loading && !metrics) {
+    if (dashboardLoading && !metrics) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-4 text-slate-500">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -141,15 +186,14 @@ Reglas críticas:
         )
     }
 
-    // 2. Render de Error de Conexión
-    if (error || !metrics) {
+    if (dashboardError || !metrics) {
         return (
             <div className="p-6 text-center max-w-sm mx-auto space-y-3 pt-20">
                 <div className="p-3 bg-red-100 text-red-600 rounded-full w-fit mx-auto dark:bg-red-950/40">
                     <AlertTriangle className="h-6 w-6" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Error de sincronización</h3>
-                <p className="text-sm text-slate-500">{error || "No se pudieron conectar los tableros analíticos."}</p>
+                <p className="text-sm text-slate-500">{dashboardError || "No se pudieron conectar los tableros analíticos."}</p>
             </div>
         )
     }
@@ -157,7 +201,7 @@ Reglas críticas:
     const { cards, distribucionCategorias } = metrics;
 
     return (
-        <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8">
+        <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8 relative">
 
             {/* Encabezado Principal */}
             <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center border-b border-slate-200/60 dark:border-slate-800 pb-5">
@@ -197,120 +241,85 @@ Reglas críticas:
                         )}
                     </Button>
 
-                    <Button size="sm" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">
+                    <Button
+                        size="sm"
+                        onClick={() => { setLocalUploadError(null); setUploadSuccess(false); setIsModalOpen(true); }}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
+                    >
                         <Upload className="h-4 w-4" /> Importar Estudio (CSV)
                     </Button>
                 </div>
             </header>
 
-            {/* Grid de Métricas Clave de Primer Vistazo Conectadas */}
+            {/* Grid de Tarjetas */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-                {/* CARD 1: TOTAL ESTUDIOS INDEXADOS */}
                 <Card className="border-slate-100 dark:border-slate-800">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            Estudios Indexados
-                        </CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">Estudios Indexados</CardTitle>
                         <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {cards.totalEstudios}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                            Eventos médicos cargados
-                        </p>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{cards.totalEstudios}</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Eventos médicos cargados</p>
                     </CardContent>
                 </Card>
 
-                {/* CARD 2: ALERTAS CRÍTICAS DETECTADAS */}
                 <Card className={`border-slate-100 dark:border-slate-800 ${cards.totalAlertas > 0 ? 'border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10' : ''}`}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            Alertas Críticas
-                        </CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">Alertas Críticas</CardTitle>
                         <AlertTriangle className={`h-4 w-4 ${cards.totalAlertas > 0 ? 'text-amber-600' : 'text-slate-400'}`} />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${cards.totalAlertas > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
-                            {cards.totalAlertas}
-                        </div>
+                        <div className={`text-2xl font-bold ${cards.totalAlertas > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>{cards.totalAlertas}</div>
                         <p className={`text-xs mt-1 font-medium ${cards.totalAlertas > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-500'}`}>
                             {cards.totalAlertas === 1 ? 'Valor fuera de rango' : cards.totalAlertas > 1 ? 'Valores fuera de rango' : 'Todo en orden de referencia'}
                         </p>
                     </CardContent>
                 </Card>
 
-                {/* CARD 3: ÍNDICE DE SALUD ÓPTIMA */}
                 <Card className="border-slate-100 dark:border-slate-800">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            Índice de Salud Óptima
-                        </CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">Índice de Salud Óptima</CardTitle>
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                            {cards.porcentajeOptimos}%
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                            Biomarcadores normales
-                        </p>
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{cards.porcentajeOptimos}%</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Biomarcadores normales</p>
                     </CardContent>
                 </Card>
 
-                {/* CARD 4: ESPECIALIDADES MÉDICAS */}
                 <Card className="border-slate-100 dark:border-slate-800">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            Especialidades Médicas
-                        </CardTitle>
+                        <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-300">Especialidades Médicas</CardTitle>
                         <HeartPulse className="h-4 w-4 text-rose-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {distribucionCategorias.length}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">
-                            Categorías clínicas detectadas
-                        </p>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">{distribucionCategorias.length}</div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">Categorías clínicas detectadas</p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Sección Inferior: Gráfico Dinámico y Resumen Técnico */}
+            {/* Sección de Gráficos y Distribución */}
             <div className="mt-6 grid gap-4 lg:grid-cols-7">
-
-                {/* Contenedor del Gráfico Dinámico (4 columnas) */}
                 <Card className="border-slate-100 dark:border-slate-800 lg:col-span-4">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold">
                             {targetBiomarker ? `Tendencia de: ${targetBiomarker.parameter}` : 'Tendencias Clínicas'}
                         </CardTitle>
-                        <CardDescription>
-                            Evaluación histórica y cronológica calculada a través de las muestras SQL indexadas.
-                        </CardDescription>
+                        <CardDescription>Evaluación histórica y cronológica calculada a través de las muestras SQL indexadas.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[280px] w-full pt-2">
-                        {targetBiomarker ? (
-                            <Line data={chartData} options={chartOptions} />
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                                Carga tu primer CSV para activar los gráficos lineales.
-                            </div>
-                        )}
+                        {targetBiomarker ? <Line data={chartData} options={chartOptions} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Carga tu primer CSV para activar los gráficos lineales.</div>}
                     </CardContent>
                 </Card>
 
-                {/* Resumen Relacional de Categorías (3 columnas) */}
                 <Card className="border-slate-100 dark:border-slate-800 lg:col-span-3">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold">Distribución Analítica</CardTitle>
                         <CardDescription>Volumen de registros segmentados por laboratorio.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-
                         {distribucionCategorias.length === 0 ? (
                             <p className="text-xs text-slate-400 py-6 text-center">No hay registros cargados aún.</p>
                         ) : (
@@ -325,11 +334,8 @@ Reglas críticas:
                                 ))}
                             </div>
                         )}
-
                         <div className="space-y-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400 border-t pt-3 border-slate-100 dark:border-slate-800">
-                            <p>
-                                El backend procesó de forma segura tus datos multi-tenant para aislar métricas y variables relacionales.
-                            </p>
+                            <p>El backend procesó de forma segura tus datos multi-tenant para aislar métricas y variables relacionales.</p>
                             {cards.totalAlertas > 0 && (
                                 <p className="font-semibold text-amber-600 dark:text-amber-500 flex items-center gap-1">
                                     ⚠️ Atención: Posees {cards.totalAlertas} {cards.totalAlertas === 1 ? 'biomarcador' : 'biomarcadores'} fuera de los rangos estándar de referencia.
@@ -340,6 +346,85 @@ Reglas críticas:
                 </Card>
             </div>
 
+            {/* --- MODAL DIÁLOGO DE IMPORTACIÓN --- */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <Card className="w-full max-w-md border-slate-200 shadow-xl dark:border-slate-800 bg-white dark:bg-slate-950 relative overflow-hidden">
+
+                        <button
+                            disabled={isLocalUploading}
+                            onClick={() => setIsModalOpen(false)}
+                            className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-700 transition-colors disabled:opacity-50"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+
+                        <CardHeader>
+                            <CardTitle className="text-xl font-bold flex items-center gap-2">
+                                <Upload className="h-5 w-5 text-blue-600" /> Importar Registros Clínicos
+                            </CardTitle>
+                            <CardDescription>
+                                Sube el archivo estructurado por la IA para consolidar tu historial analítico.
+                            </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept=".csv"
+                                className="hidden"
+                            />
+
+                            {!isLocalUploading && !uploadSuccess && (
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-slate-200 hover:border-blue-500 dark:border-slate-800 dark:hover:border-blue-600 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-900/20 group"
+                                >
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-full text-blue-600 mb-3 group-hover:scale-105 transition-transform">
+                                        <FileText className="h-6 w-6" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        Arrastra tu archivo CSV aquí o <span className="text-blue-600 dark:text-blue-400 font-bold">búscalo</span>
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1">Solo se admiten documentos estructurados (.csv)</p>
+                                </div>
+                            )}
+
+                            {isLocalUploading && (
+                                <div className="py-8 flex flex-col items-center justify-center space-y-3">
+                                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Parseando y validando biomarcadores...</p>
+                                    <p className="text-xs text-slate-400 text-center max-w-[280px]">Estamos insertando las muestras relacionales de forma segura en PostgreSQL.</p>
+                                </div>
+                            )}
+
+                            {uploadSuccess && (
+                                <div className="py-6 flex flex-col items-center justify-center space-y-2 text-center animate-in zoom-in-95 duration-200">
+                                    <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-full">
+                                        <CheckCircle2 className="h-7 w-7" />
+                                    </div>
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white">¡Estudio indexado con éxito!</h4>
+                                    <p className="text-xs text-slate-400 max-w-[260px]">Los tableros analíticos se han re-calculado de forma sincronizada.</p>
+                                </div>
+                            )}
+
+                            {localUploadError && (
+                                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 flex items-start gap-2.5 text-xs text-red-600 dark:text-red-400 animate-in shake duration-300">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold">Error de importación</p>
+                                        <p className="mt-0.5 leading-relaxed">{localUploadError}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     )
 }
