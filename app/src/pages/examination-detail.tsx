@@ -49,7 +49,7 @@ export default function ExaminationDetail() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate("/examinations")}
+                        onClick={() => navigate("/estudios")}
                         className="p-0 hover:bg-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white"
                     >
                         <ArrowLeft className="h-4 w-4 mr-1" /> Volver a Estudios
