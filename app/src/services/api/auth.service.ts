@@ -1,5 +1,5 @@
 import { type AxiosInstance } from "axios";
-import type { GoogleUser } from "./types/responses";
+import type { GoogleUser } from "./types/auth";
 
 export default class AuthService {
     private readonly httpClient: AxiosInstance;
