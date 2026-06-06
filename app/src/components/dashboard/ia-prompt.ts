@@ -12,4 +12,5 @@ Reglas críticas:
    - Límites superiores máximos (reemplaza palabras como "Hasta", "Menor a", "Normal inferior a", "<"): usa obligatoriamente el formato "Menor a [valor]" (ej: "Menor a 10.0").
    - Límites inferiores mínimos (reemplaza palabras como "Desde", "Mayor a", ">"): usa obligatoriamente el formato "Mayor a [valor]" (ej: "Mayor a 4.5").
    - Si no existe un rango de referencia, deja la columna vacía o escribe "No especificado".
-6. Devuelve ÚNICAMENTE el bloque de código CSV, sin textos introductorios ni explicaciones.`;
+6. Formato de Salida Obligatorio: Devuelve el resultado exclusivamente dentro de un bloque de código Markdown especificando el nombre del archivo para permitir su descarga directa con la sintaxis \`\`\`csv:estudio_salud.csv
+7. Devuelve ÚNICAMENTE el bloque de código CSV solicitado, sin textos introductorios, saludos ni explicaciones de ningún tipo.`;
