@@ -37,17 +37,22 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 export default function Dashboard() {
     const user = storageService.getUser() as User;
     const userName = `${user?.firstName} ${user?.lastName}` || "Usuario";
+
+    // Estados de control general
     const [copied, setCopied] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
+
+    // Nueva pestaña activa y control de texto pegado
+    const [activeTab, setActiveTab] = useState<"file" | "paste">("file")
+    const [pastedText, setPastedText] = useState("")
+
+    // Estados de control de la importación
     const [uploadSuccess, setUploadSuccess] = useState(false)
     const [localUploadError, setLocalUploadError] = useState<string | null>(null)
     const [isLocalUploading, setIsLocalUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Hook del Dashboard para las métricas e indicadores generales
     const { metrics, loading: dashboardLoading, error: dashboardError, refresh: refreshDashboard } = useDashboard()
-
-    // Consumimos tu hook core de exámenes (indicando un límite bajo ya que en el dashboard no listamos la tabla)
     const { uploadCSV } = useExaminations(1)
 
     const descargarPlantillaCSV = () => {
@@ -65,32 +70,42 @@ export default function Dashboard() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // Procesador de la subida usando tu función nativa
-    const handleProcessFile = async (file: File) => {
-        if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
-            setLocalUploadError("El formato del archivo debe ser estrictamente CSV.");
-            return;
-        }
-
+    const handleProcessFileOrText = async (payload: File | string) => {
         setIsLocalUploading(true);
         setLocalUploadError(null);
         setUploadSuccess(false);
 
         try {
-            // Llamamos a tu función nativa del hook useExaminations
-            await uploadCSV(file);
+            let fileToUpload: File;
+
+            if (payload instanceof File) {
+                if (!payload.name.endsWith(".csv") && payload.type !== "text/csv") {
+                    throw new Error("El formato del archivo debe ser estrictamente CSV.");
+                }
+                fileToUpload = payload;
+            } else {
+                const cleanText = payload.trim();
+                if (!cleanText) {
+                    throw new Error("Por favor, pega el bloque de texto CSV generado por la IA.");
+                }
+                // Convertimos el texto plano ingresado a un archivo virtual CSV en el cliente
+                const blob = new Blob([cleanText], { type: 'text/csv' });
+                fileToUpload = new File([blob], 'estudio_salud_pegado.csv', { type: 'text/csv' });
+            }
+
+            // Consumimos tu función nativa de useExaminations
+            await uploadCSV(fileToUpload);
 
             setUploadSuccess(true);
-            // Sincronizamos en segundo plano los gráficos e indicadores del dashboard
-            refreshDashboard();
+            setPastedText(""); // Limpiamos el editor tras indexar con éxito
+            refreshDashboard(); // Recalculamos gráficos en tiempo de ejecución
 
             setTimeout(() => {
                 setIsModalOpen(false);
                 setUploadSuccess(false);
             }, 1800);
         } catch (err: any) {
-            // El error ya viene formateado y masticado desde tu hook useExaminations
-            setLocalUploadError(err.message || "Error al procesar el archivo en el servidor.");
+            setLocalUploadError(err.message || "Error al procesar la información en el servidor.");
         } finally {
             setIsLocalUploading(false);
         }
@@ -98,16 +113,15 @@ export default function Dashboard() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (files && files.length > 0) handleProcessFile(files[0]);
+        if (files && files.length > 0) handleProcessFileOrText(files[0]);
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const files = e.dataTransfer.files;
-        if (files && files.length > 0) handleProcessFile(files[0]);
+        if (files && files.length > 0) handleProcessFileOrText(files[0]);
     };
 
-    // --- PROCESAMIENTO DINÁMICO DEL GRÁFICO ---
     const targetBiomarker = metrics?.graficoEvolucion.find(b => b.parameter.toLowerCase().includes("homa-ir"))
         || metrics?.graficoEvolucion[0];
 
@@ -233,7 +247,7 @@ export default function Dashboard() {
                         onClick={() => { setLocalUploadError(null); setUploadSuccess(false); setIsModalOpen(true); }}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
                     >
-                        <Upload className="h-4 w-4" /> Importar Estudio (CSV)
+                        <Upload className="h-4 w-4" /> Importar Estudio
                     </Button>
                 </div>
             </header>
@@ -287,7 +301,8 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            {/* Sección de Gráficos y Distribución */}
+            {/* --- SECCIÓN DE TENDENCIAS CLÍNICAS Y SEGMENTACIÓN --- */}
+            { }
             <div className="mt-6 grid gap-4 lg:grid-cols-7">
                 <Card className="border-slate-100 dark:border-slate-800 lg:col-span-4">
                     <CardHeader>
@@ -333,11 +348,13 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            {/* --- MODAL DIÁLOGO DE IMPORTACIÓN --- */}
+            {/* --- MODAL DIÁLOGO DE IMPORTACIÓN ADAPTATIVO (TABS DUALES) --- */}
+            { }
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-                    <Card className="w-full max-w-md border-slate-200 shadow-xl dark:border-slate-800 bg-white dark:bg-slate-950 relative overflow-hidden">
+                    <Card className="w-full max-w-lg border-slate-200 shadow-xl dark:border-slate-800 bg-white dark:bg-slate-950 relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
 
+                        {/* Botón para cerrar modal */}
                         <button
                             disabled={isLocalUploading}
                             onClick={() => setIsModalOpen(false)}
@@ -346,16 +363,38 @@ export default function Dashboard() {
                             <X className="h-4 w-4" />
                         </button>
 
-                        <CardHeader>
+                        <CardHeader className="pb-3">
                             <CardTitle className="text-xl font-bold flex items-center gap-2">
-                                <Upload className="h-5 w-5 text-blue-600" /> Importar Registros Clínicos
+                                <Upload className="h-5 w-5 text-blue-600" /> Cargar Nuevo Reporte
                             </CardTitle>
                             <CardDescription>
-                                Sube el archivo estructurado por la IA para consolidar tu historial analítico.
+                                Elige el método de importación más cómodo según la respuesta de tu asistente de IA.
                             </CardDescription>
                         </CardHeader>
 
-                        <CardContent className="space-y-4">
+                        {/* TABS DE SELECCIÓN DE ENTRADA */}
+                        <div className="px-6 flex gap-3 border-b border-slate-100 dark:border-slate-800/80">
+                            <button
+                                disabled={isLocalUploading || uploadSuccess}
+                                onClick={() => { setActiveTab("file"); setLocalUploadError(null); }}
+                                className={`pb-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === "file"
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                            >
+                                Subir Archivo (.csv)
+                            </button>
+                            <button
+                                disabled={isLocalUploading || uploadSuccess}
+                                onClick={() => { setActiveTab("paste"); setLocalUploadError(null); }}
+                                className={`pb-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === "paste"
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                            >
+                                Pegar Texto Plano
+                            </button>
+                        </div>
+
+                        <CardContent className="space-y-4 pt-4">
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -364,23 +403,49 @@ export default function Dashboard() {
                                 className="hidden"
                             />
 
+                            { }
                             {!isLocalUploading && !uploadSuccess && (
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={handleDrop}
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="border-2 border-dashed border-slate-200 hover:border-blue-500 dark:border-slate-800 dark:hover:border-blue-600 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-900/20 group"
-                                >
-                                    <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-full text-blue-600 mb-3 group-hover:scale-105 transition-transform">
-                                        <FileText className="h-6 w-6" />
-                                    </div>
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                        Arrastra tu archivo CSV aquí o <span className="text-blue-600 dark:text-blue-400 font-bold">búscalo</span>
-                                    </p>
-                                    <p className="text-xs text-slate-400 mt-1">Solo se admiten documentos estructurados (.csv)</p>
-                                </div>
+                                <>
+                                    {/* TAB 1: Drag & Drop tradicional */}
+                                    {activeTab === "file" && (
+                                        <div
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={handleDrop}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-slate-200 hover:border-blue-500 dark:border-slate-800 dark:hover:border-blue-600 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-900/20 group animate-in fade-in duration-150"
+                                        >
+                                            <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-full text-blue-600 mb-3 group-hover:scale-105 transition-transform">
+                                                <FileText className="h-6 w-6" />
+                                            </div>
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                                Arrastra tu archivo CSV aquí o <span className="text-blue-600 dark:text-blue-400 font-bold">búscalo</span>
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">Solo se admiten documentos estructurados (.csv)</p>
+                                        </div>
+                                    )}
+
+                                    {/* TAB 2: Textarea para pegado libre */}
+                                    {activeTab === "paste" && (
+                                        <div className="space-y-3 animate-in fade-in duration-150">
+                                            <textarea
+                                                value={pastedText}
+                                                onChange={(e) => setPastedText(e.target.value)}
+                                                rows={6}
+                                                placeholder="fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia&#10;22/05/2026,Azar Laboratorios,Chequeo Anual,Hematología,Hemoglobina,16.2,g/dL,13.5 - 17.5"
+                                                className="w-full text-xs font-mono p-3 bg-slate-50 dark:bg-slate-900 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:text-slate-200 placeholder:text-slate-400 leading-relaxed scrollbar-thin"
+                                            />
+                                            <Button
+                                                onClick={() => handleProcessFileOrText(pastedText)}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                                            >
+                                                Procesar Texto Copiado
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
+                            {/* Cargando */}
                             {isLocalUploading && (
                                 <div className="py-8 flex flex-col items-center justify-center space-y-3">
                                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -389,6 +454,7 @@ export default function Dashboard() {
                                 </div>
                             )}
 
+                            {/* Éxito */}
                             {uploadSuccess && (
                                 <div className="py-6 flex flex-col items-center justify-center space-y-2 text-center animate-in zoom-in-95 duration-200">
                                     <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-full">
@@ -399,6 +465,7 @@ export default function Dashboard() {
                                 </div>
                             )}
 
+                            {/* Mensaje de Error Localizado */}
                             {localUploadError && (
                                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 flex items-start gap-2.5 text-xs text-red-600 dark:text-red-400 animate-in shake duration-300">
                                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />

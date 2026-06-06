@@ -36,6 +36,13 @@ export default class ExaminationsService {
         return response.data;
     }
 
+    public async uploadCSVText(csvText: string): Promise<UploadCSVResponse> {
+        const response = await this.httpClient.post<UploadCSVResponse>('/examinations/upload', {
+            csvText
+        });
+        return response.data;
+    }
+
     public async getById(id: string): Promise<ExaminationDetailResponse> {
         const response = await this.httpClient.get<ExaminationDetailResponse>(`/examinations/${id}`);
         return response.data;
