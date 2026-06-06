@@ -1,5 +1,4 @@
-// src/pages/estudios.tsx
-import { useState } from 'react'
+// app/src/pages/examinations.tsx
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,122 +11,26 @@ import {
     AlertCircle,
     ArrowUpRight,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Loader2
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-
-// 1. Interfaces idénticas a las que usará tu Backend
-interface Estudio {
-    id: string;
-    fecha: string;
-    laboratorio: string;
-    descripcion: string;
-    alertas: number;
-    categorias: string[];
-}
-
-interface ApiResponse {
-    data: Estudio[];
-    meta: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
-}
-
-// El array base con todos tus datos de prueba (Universo de datos completo)
-const mockEstudiosBase: Estudio[] = [
-    {
-        id: "evt-1",
-        fecha: "22/05/2026",
-        laboratorio: "Azar Laboratorios",
-        descripcion: "Chequeo Anual Completo",
-        alertas: 2,
-        categorias: ["Hematología", "Química", "Endocrinología"]
-    },
-    {
-        id: "evt-2",
-        fecha: "14/11/2025",
-        laboratorio: "Instituto Médico Alas",
-        descripcion: "Perfil Lipídico de Control",
-        alertas: 1,
-        categorias: ["Química"]
-    },
-    {
-        id: "evt-3",
-        fecha: "05/01/2025",
-        laboratorio: "Sanatorio Mater Dei",
-        descripcion: "Rutina Post-Guardia",
-        alertas: 0,
-        categorias: ["Hematología", "Uroanálisis"]
-    },
-    {
-        id: "evt-4",
-        fecha: "12/04/2026",
-        laboratorio: "Centro Oftalmológico Visión",
-        descripcion: "Medición de Agudeza y Presión Intraocular",
-        alertas: 1,
-        categorias: ["Oftalmología"]
-    },
-    {
-        id: "evt-5",
-        fecha: "10/04/2026",
-        laboratorio: "Dental Sano",
-        descripcion: "Radiografía Panorámica Bucal",
-        alertas: 0,
-        categorias: ["Odontología"]
-    }
-]
-
-const ITEMS_PER_PAGE = 2
+import { useExaminations } from "@/hooks/use-examinations" // Asegúrate de apuntar a la ruta correcta de tus hooks
 
 export default function Examinations() {
     const navigate = useNavigate()
-    const [searchTerm, setSearchTerm] = useState("")
-    const [currentPage, setCurrentPage] = useState(1)
 
-    // 2. Simulación del Motor de Búsqueda de la DB (Filtrado inicial)
-    const filteredBase = mockEstudiosBase.filter(estudio =>
-        estudio.laboratorio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        estudio.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-
-    // 3. CONSTRUCCIÓN DE LA RESPUESTA TIPO BACKEND
-    // Calculamos los índices para segmentar los datos de esta página
-    const totalItems = filteredBase.length
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1
-
-    const indexOfLastItem = currentPage * ITEMS_PER_PAGE
-    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE
-
-    // Armamos el objeto simulando la estructura exacta del JSON esperado
-    const responseServer: ApiResponse = {
-        data: filteredBase.slice(indexOfFirstItem, indexOfLastItem), // Segmento de la página actual
-        meta: {
-            total: totalItems,
-            page: currentPage,
-            limit: ITEMS_PER_PAGE,
-            totalPages: totalPages
-        }
-    }
-
-    // Desestructuramos para trabajar de forma estándar como si viniera de un fetch
-    const { data: estudios, meta } = responseServer
-
-    // 4. Handlers controlados
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value)
-        setCurrentPage(1) // Volvemos a la pág 1 si cambia el término buscado
-    }
-
-    const goToNextPage = () => {
-        if (meta.page < meta.totalPages) setCurrentPage(prev => prev + 1)
-    }
-
-    const goToPrevPage = () => {
-        if (meta.page > 1) setCurrentPage(prev => prev - 1)
-    }
+    // Inyectamos el límite de items por página (en tu mock tenías 2, lo dejamos igual)
+    const {
+        examinations: estudios,
+        meta,
+        searchTerm,
+        setSearchTerm,
+        loading,
+        error,
+        goToNextPage,
+        goToPrevPage
+    } = useExaminations(2)
 
     return (
         <div className="bg-slate-50 p-4 dark:bg-slate-900 md:p-8 flex flex-col justify-between h-full">
@@ -148,14 +51,27 @@ export default function Examinations() {
                         type="text"
                         placeholder="Buscar por laboratorio o descripción..."
                         value={searchTerm}
-                        onChange={handleSearchChange}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                     />
+                    {loading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
                 </div>
 
+                {/* Feedback de error de red o base de datos */}
+                {error && (
+                    <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-sm font-medium">
+                        {error}
+                    </div>
+                )}
+
                 {/* Grid Adaptativo de Cards */}
-                <div className="grid gap-4">
-                    {estudios.length === 0 ? (
+                <div className={`grid gap-4 transition-opacity duration-200 ${loading ? 'opacity-60' : 'opacity-100'}`}>
+                    {loading && estudios.length === 0 ? (
+                        <div className="space-y-3 py-8 text-center text-sm text-slate-400">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-2" />
+                            Sincronizando registros médicos...
+                        </div>
+                    ) : estudios.length === 0 ? (
                         <p className="text-center text-sm text-slate-500 py-8">No se encontraron estudios.</p>
                     ) : (
                         estudios.map((estudio) => (
@@ -224,11 +140,11 @@ export default function Examinations() {
             {/* CONTROLES DE PAGINACIÓN COMPLEMENTARIOS */}
             {meta.total > 0 && (
                 <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    {/* Cálculos basados en la metadata simulada */}
+                    {/* Cálculos basados en la metadata real provista por el backend */}
                     <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Mostrando <span className="font-semibold text-slate-900 dark:text-white">{indexOfFirstItem + 1}</span> a{" "}
+                        Mostrando <span className="font-semibold text-slate-900 dark:text-white">{((meta.page - 1) * meta.limit) + 1}</span> a{" "}
                         <span className="font-semibold text-slate-900 dark:text-white">
-                            {indexOfLastItem > meta.total ? meta.total : indexOfLastItem}
+                            {(meta.page * meta.limit) > meta.total ? meta.total : (meta.page * meta.limit)}
                         </span>{" "}
                         de <span className="font-semibold text-slate-900 dark:text-white">{meta.total}</span> estudios
                     </div>
@@ -239,7 +155,7 @@ export default function Examinations() {
                             variant="outline"
                             size="sm"
                             onClick={goToPrevPage}
-                            disabled={meta.page === 1}
+                            disabled={meta.page === 1 || loading}
                             className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
                         >
                             <ChevronLeft className="h-4 w-4" />
@@ -254,7 +170,7 @@ export default function Examinations() {
                             variant="outline"
                             size="sm"
                             onClick={goToNextPage}
-                            disabled={meta.page === meta.totalPages}
+                            disabled={meta.page === meta.totalPages || loading}
                             className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
                         >
                             <span className="hidden sm:inline mr-1">Siguiente</span>
