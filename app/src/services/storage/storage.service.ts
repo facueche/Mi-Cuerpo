@@ -1,6 +1,6 @@
 const STORAGE_KEYS = {
-    TOKEN: "nerp_token",
-    USER_INFO: "nerp_user_info",
+    TOKEN: "token",
+    USER_INFO: "user_info",
 } as const;
 
 export const storageService = {
