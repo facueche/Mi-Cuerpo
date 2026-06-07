@@ -11,21 +11,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Logo from "@/components/ui/health-logo"
 import { LayoutDashboard, FileText, BarChart3, LogOut, User as UserIcon } from "lucide-react"
+import { storageService } from '@/services/storage/storage.service'
 
 export default function AppLayout() {
     const location = useLocation()
 
-    // Estos datos vendrán del estado global de tu AuthContext (JWT decodificado)
-    const user = {
-        firstName: "Facundo",
-        email: "facundo@gmail.com",
-        avatarUrl: null // Si viene de Google, acá estaría la URL de su foto
-    }
+    const user = storageService.getUser();
 
     const handleLogout = () => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = "/"
+        storageService.clearSession();
+        window.location.href = "/";
     }
 
     // Configuración de los links de navegación compartidos
@@ -98,7 +93,7 @@ export default function AppLayout() {
                         <DropdownMenuContent className="w-56" align="end" forceMount>
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">{user.firstName}</p>
+                                    <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
                                     <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                                 </div>
                             </DropdownMenuLabel>
