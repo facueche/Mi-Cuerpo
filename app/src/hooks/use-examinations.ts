@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import HttpClient from "../services/api/http-client";
 import ExaminationsService from "../services/api/examinations.service";
-import type { Examination, ApiMeta } from "../services/api/types/examinations";
+import type { Examination, ApiMeta, UploadCSVResponse } from "../services/api/types/examinations";
 import { storageService } from "@/services/storage/storage.service";
 
 export function useExaminations(initialLimit = 5) {
@@ -71,12 +71,13 @@ export function useExaminations(initialLimit = 5) {
     };
 
     // 4. Acción mutadora: Subida de archivo CSV
-    const uploadCSV = async (file: File): Promise<void> => {
+    const uploadCSV = async (file: File): Promise<UploadCSVResponse> => {
         setLoading(true);
         setError(null);
         try {
-            await examinationsService.uploadCSV(file);
+            const response = await examinationsService.uploadCSV(file);
             await fetchExaminations(); // Re-sincroniza la lista actual tras la ingesta exitosa
+            return response;
         } catch (err: any) {
             console.error("Error uploading CSV:", err);
             const errMsg = err.response?.data?.message || "Error al subir la plantilla CSV.";

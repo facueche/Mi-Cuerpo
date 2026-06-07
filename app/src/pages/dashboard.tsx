@@ -10,9 +10,11 @@ import {
     Loader2,
     HeartPulse,
     X,
-    FileText
+    FileText,
+    ArrowRight
 } from "lucide-react"
 import { useState, useRef } from "react"
+import { useNavigate } from "react-router-dom" // Importamos el hook de navegación
 import { useDashboard } from "@/hooks/use-dashboard"
 import { useExaminations } from "@/hooks/use-examinations"
 
@@ -26,7 +28,7 @@ import {
     Filler,
     type ChartOptions
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Line as LineChart } from 'react-chartjs-2';
 import { storageService } from "@/services/storage/storage.service"
 import type { User } from "@/services/api/types/auth"
 import { referencePrompt } from "@/components/dashboard/ia-prompt"
@@ -37,6 +39,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 export default function Dashboard() {
     const user = storageService.getUser() as User;
     const userName = `${user?.firstName} ${user?.lastName}` || "Usuario";
+    const navigate = useNavigate(); // Inicializamos el router para la redirección
 
     // Estados de control general
     const [copied, setCopied] = useState(false)
@@ -48,11 +51,14 @@ export default function Dashboard() {
 
     // Estados de control de la importación
     const [uploadSuccess, setUploadSuccess] = useState(false)
+    const [createdEventId, setCreatedEventId] = useState<string | null>(null) // Guardará el ID del MedicalEvent creado
     const [localUploadError, setLocalUploadError] = useState<string | null>(null)
     const [isLocalUploading, setIsLocalUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const { metrics, loading: dashboardLoading, error: dashboardError, refresh: refreshDashboard } = useDashboard()
+
+    // Asegúrate de que tu hook useExaminations retorne la respuesta del backend tras el upload
     const { uploadCSV } = useExaminations(1)
 
     const descargarPlantillaCSV = () => {
@@ -74,6 +80,7 @@ export default function Dashboard() {
         setIsLocalUploading(true);
         setLocalUploadError(null);
         setUploadSuccess(false);
+        setCreatedEventId(null);
 
         try {
             let fileToUpload: File;
@@ -88,22 +95,22 @@ export default function Dashboard() {
                 if (!cleanText) {
                     throw new Error("Por favor, pega el bloque de texto CSV generado por la IA.");
                 }
-                // Convertimos el texto plano ingresado a un archivo virtual CSV en el cliente
                 const blob = new Blob([cleanText], { type: 'text/csv' });
                 fileToUpload = new File([blob], 'estudio_salud_pegado.csv', { type: 'text/csv' });
             }
 
-            // Consumimos tu función nativa de useExaminations
-            await uploadCSV(fileToUpload);
+            const response = await uploadCSV(fileToUpload);
+
+            const eventId = response.eventId;
+
+            if (eventId) {
+                setCreatedEventId(eventId);
+            }
 
             setUploadSuccess(true);
-            setPastedText(""); // Limpiamos el editor tras indexar con éxito
-            refreshDashboard(); // Recalculamos gráficos en tiempo de ejecución
+            setPastedText("");
+            refreshDashboard();
 
-            setTimeout(() => {
-                setIsModalOpen(false);
-                setUploadSuccess(false);
-            }, 1800);
         } catch (err: any) {
             setLocalUploadError(err.message || "Error al procesar la información en el servidor.");
         } finally {
@@ -120,6 +127,14 @@ export default function Dashboard() {
         e.preventDefault();
         const files = e.dataTransfer.files;
         if (files && files.length > 0) handleProcessFileOrText(files[0]);
+    };
+
+    const handleCloseModal = () => {
+        if (isLocalUploading) return;
+        setIsModalOpen(false);
+        setUploadSuccess(false);
+        setCreatedEventId(null);
+        setLocalUploadError(null);
     };
 
     const targetBiomarker = metrics?.graficoEvolucion.find(b => b.parameter.toLowerCase().includes("homa-ir"))
@@ -244,7 +259,7 @@ export default function Dashboard() {
 
                     <Button
                         size="sm"
-                        onClick={() => { setLocalUploadError(null); setUploadSuccess(false); setIsModalOpen(true); }}
+                        onClick={() => { setLocalUploadError(null); setUploadSuccess(false); setCreatedEventId(null); setIsModalOpen(true); }}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
                     >
                         <Upload className="h-4 w-4" /> Importar Estudio
@@ -302,7 +317,6 @@ export default function Dashboard() {
             </div>
 
             {/* --- SECCIÓN DE TENDENCIAS CLÍNICAS Y SEGMENTACIÓN --- */}
-            { }
             <div className="mt-6 grid gap-4 lg:grid-cols-7">
                 <Card className="border-slate-100 dark:border-slate-800 lg:col-span-4">
                     <CardHeader>
@@ -312,7 +326,7 @@ export default function Dashboard() {
                         <CardDescription>Evaluación histórica y cronológica calculada a través de las muestras SQL indexadas.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[280px] w-full pt-2">
-                        {targetBiomarker ? <Line data={chartData} options={chartOptions} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Carga tu primer CSV para activar los gráficos lineales.</div>}
+                        {targetBiomarker ? <LineChart data={chartData} options={chartOptions} /> : <div className="h-full flex items-center justify-center text-xs text-slate-400">Carga tu primer CSV para activar los gráficos lineales.</div>}
                     </CardContent>
                 </Card>
 
@@ -349,7 +363,6 @@ export default function Dashboard() {
             </div>
 
             {/* --- MODAL DIÁLOGO DE IMPORTACIÓN ADAPTATIVO (TABS DUALES) --- */}
-            { }
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
                     <Card className="w-full max-w-lg border-slate-200 shadow-xl dark:border-slate-800 bg-white dark:bg-slate-950 relative overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
@@ -357,7 +370,7 @@ export default function Dashboard() {
                         {/* Botón para cerrar modal */}
                         <button
                             disabled={isLocalUploading}
-                            onClick={() => setIsModalOpen(false)}
+                            onClick={handleCloseModal}
                             className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-700 transition-colors disabled:opacity-50"
                         >
                             <X className="h-4 w-4" />
@@ -403,7 +416,6 @@ export default function Dashboard() {
                                 className="hidden"
                             />
 
-                            { }
                             {!isLocalUploading && !uploadSuccess && (
                                 <>
                                     {/* TAB 1: Drag & Drop tradicional */}
@@ -454,14 +466,38 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            {/* Éxito */}
+                            {/* Éxito con los botones de redirección adaptados */}
                             {uploadSuccess && (
-                                <div className="py-6 flex flex-col items-center justify-center space-y-2 text-center animate-in zoom-in-95 duration-200">
+                                <div className="py-4 flex flex-col items-center justify-center space-y-4 text-center animate-in zoom-in-95 duration-200">
                                     <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-full">
                                         <CheckCircle2 className="h-7 w-7" />
                                     </div>
-                                    <h4 className="text-base font-bold text-slate-900 dark:text-white">¡Estudio indexado con éxito!</h4>
-                                    <p className="text-xs text-slate-400 max-w-[260px]">Los tableros analíticos se han re-calculado de forma sincronizada.</p>
+                                    <div>
+                                        <h4 className="text-base font-bold text-slate-900 dark:text-white">¡Estudio indexado con éxito!</h4>
+                                        <p className="text-xs text-slate-400 max-w-[280px] mt-1">Los tableros analíticos se han re-calculado de forma sincronizada.</p>
+                                    </div>
+
+                                    {/* Botonera de Acción Post-Ingesta */}
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full pt-2 px-2">
+                                        {createdEventId && (
+                                            <Button
+                                                onClick={() => {
+                                                    handleCloseModal();
+                                                    navigate(`/estudios/${createdEventId}`);
+                                                }}
+                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 py-2"
+                                            >
+                                                Ver Estudio Creado <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleCloseModal}
+                                            className="text-xs font-semibold border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 flex-1 py-2"
+                                        >
+                                            Permanecer en Dashboard
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 
