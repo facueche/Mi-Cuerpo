@@ -1,15 +1,21 @@
 export const referencePrompt = `Actúa como un extractor de datos médicos experto y preciso.
 Analiza el documento médico adjunto (puede ser un informe, análisis clínico de laboratorio, electrocardiograma o valoración cardiovascular) y estructura TODOS sus biomarcadores en un formato CSV limpio, utilizando estrictamente las siguientes columnas separadas por comas:
 
-fecha,laboratorio,descripcion,categoria,biomarcador,resultado,unidad,referencia
+fecha,laboratorio,titulo,descripcion,doctor,categoria,biomarcador,resultado,unidad,referencia
 
-REGLAS CRÍTICAS DE ESTANDARIZACIÓN:
+REGLAS CRÍTICAS DE ESTANDARIZACIÓN Y FILTRADO:
 
-1. "fecha": Debe estar estrictamente en formato DD/MM/AAAA (ej: 28/05/2026).
-2. "descripcion": Debe ser el título general del estudio (ej: "Valoración Cardiovascular", "Chequeo Anual Completo", "Análisis de Sangre").
-3. "categoria": Debe clasificar el estudio dentro de una especialidad general de forma simplificada: "Hematología", "Química Clínica", "Endocrinología", "Uroanálisis", "Cardiología", "Inmunología".
+1. FILTRADO OBLIGATORIO DE VALORES CUANTITATIVOS:
+   - Extrae ÚNICAMENTE biomarcadores que tengan un resultado puramente numérico (ej: "84", "7.63", "1.015", "6").
+   - Ignora y omite por completo cualquier biomarcador o fila cuyo resultado sea un texto descriptivo, cualitativo o semicuantitativo (ej: "Amarillo Ambar", "Límpido", "Escaso", "No Contiene", "Negativo", "No se observan", "Ligeramente turbio"). No generes filas para estos parámetros.
 
-4. "biomarcador" (DICCIONARIO DE NORMALIZACIÓN CLÍNICA COMPLETO):
+2. "fecha": Debe estar estrictamente en formato DD/MM/AAAA (ej: 28/05/2026).
+3. "titulo": Debe ser el título general del estudio (ej: "Valoración Cardiovascular", "Chequeo Anual Completo", "Análisis de Sangre y Orina").
+4. "descripcion": Debe añadir notas o comentarios de la consulta que ayudan a dar contexto clínico (ej: "Estudio Ambulatorio, Pedido N° 306687").
+5. "doctor": Debe ser el nombre del doctor que realizó el estudio (ej: "Dr. Juan Pérez") y SIEMPRE ENTRE COMILLAS DOBLES.
+6. "categoria": Debe clasificar el estudio dentro de una especialidad general de forma simplificada: "Hematología", "Química Clínica", "Endocrinología", "Uroanálisis", "Cardiología", "Inmunología".
+
+7. "biomarcador" (DICCIONARIO DE NORMALIZACIÓN CLÍNICA COMPLETO):
 Cualquier término clínico que leas en el documento debe ser traducido estrictamente a los nombres estandarizados de nuestro catálogo clínico oficial detallado a continuación. Si no se encuentra en esta lista, aplica un fallback usando su nombre clínico formal, capitalizado, estandarizado y sin caracteres especiales:
 
    A) HEMATOLOGÍA (SERIE ROJA Y PLAQUETARIA):
@@ -43,7 +49,7 @@ Cualquier término clínico que leas en el documento debe ser traducido estricta
       - "T3 Total" (reemplaza: T3, Triyodotironina)
       - "Proteína C Reactiva (PCR)" (reemplaza: PCR, PCR Cuantitativa, PCR ultrasensible, PCR-us)
 
-   D) FUNCIÓN RENAL Y ELECTRÓLITOS:
+   D) FUNCIAL RENAL Y ELECTRÓLITOS:
       - "Urea en Sangre" (reemplaza: Urea, Uremia, Urea sérica)
       - "Creatinina en Sangre" (reemplaza: Creatinina, Creatininemia, Creatinina sérica)
       - "Ácido Úrico en Sangre" (reemplaza: Ácido Úrico, Uricemia)
@@ -77,27 +83,28 @@ Cualquier término clínico que leas en el documento debe ser traducido estricta
       - "Hierro en Sangre" (reemplaza: Sideremia, Hierro sérico)
       - "Transferrina" (reemplaza: Capacidad de fijación de hierro)
 
-   H) UROANÁLISIS (ORINA COMPLETA):
-      - "Densidad"
-      - "PH" (reemplaza: pH urinario)
+   H) UROANÁLISIS (ORINA COMPLETA - ÚNICAS COMPATIBLES):
+      - "Densidad" (Rango de referencia por defecto si no figura: "1.005 - 1.030", unidad: "g/ml")
+      - "PH" (Rango de referencia por defecto si no figura: "4.5 - 8.0", unidad: "pH")
       - "Microalbuminuria" (reemplaza: Albúmina en orina, Albuminuria)
 
    I) CARDIOVASCULAR (VALORACIÓN FÍSICA Y ECG):
-      - "Presión Arterial Sistólica" (extrae el valor sistólico, p. ej. de "120/70" extrae "120")
-      - "Presión Arterial Diastólica" (extrae el valor diastólico, p. ej. de "120/70" extrae "70")
+      - "Presión Arterial Sistólica" (extrae el valor de la sístole, ej: "120/70" -> "120")
+      - "Presión Arterial Diastólica" (extrae el valor de la diástole, ej: "120/70" -> "70")
       - "Frecuencia Cardíaca" (reemplaza: FC, Frecuencia Cardiaca Regular, Pulso)
       - "Intervalo PR (ECG)" (reemplaza: PR)
       - "Duración QRS (ECG)" (reemplaza: QRS)
       - "Intervalo QT (ECG)" (reemplaza: QT)
       - "Intervalo QTc (ECG)" (reemplaza: QTc, QT corregido)
 
-5. "resultado": Debe ser puramente numérico (usa punto para decimales). No incluyas las unidades ni símbolos dentro de esta columna (ej: de "16,2 g/dL" extrae solo "16.2").
+8. "resultado": Debe ser puramente numérico (usa punto para decimales). No incluyas las unidades ni símbolos dentro de esta columna (ej: de "16,2 g/dL" extrae solo "16.2").
 
-6. "referencia": Debe normalizarse estrictamente bajo uno de estos formatos para que nuestro parser matemático funcione:
+9. "referencia": Debe normalizarse estrictamente bajo uno de estos formatos para que nuestro parser matemático funcione:
    - Rango tradicional con guion: "70.0 - 100.0" o "13.5 - 17.5"
    - Límites máximos (reemplaza palabras como "Hasta", "Menor a", "Normal inferior a", "<"): usa "Menor a [valor]" (ej: "Menor a 150.0").
    - Límites mínimos (reemplaza palabras como "Desde", "Mayor a", ">"): usa "Mayor a [valor]" (ej: "Mayor a 4.5").
    - Si no existe rango de referencia en el documento original, escribe "No especificado" o déjalo vacío.
 
-7. Formato de Salida Obligatorio: Devuelve el resultado exclusivamente dentro de un bloque de código Markdown especificando el nombre del archivo para permitir su descarga directa con la sintaxis \`\`\`csv:estudio_salud.csv
-8. Devuelve ÚNICAMENTE el bloque de código CSV solicitado, sin textos introductorios, saludos ni explicaciones de ningún tipo. No justifiques tus decisiones clínicas.`;
+10. Formato de Salida Obligatorio: Devuelve el resultado exclusivamente dentro de un bloque de código Markdown especificando el nombre del archivo para permitir su descarga directa con la sintaxis \`\`\`csv:estudio_salud.csv
+11. Devuelve ÚNICAMENTE el bloque de código CSV solicitado, sin textos introductorios, saludos ni explicaciones de ningún tipo. No justifiques tus decisiones clínicas.
+12. Los valores de laboratorio, titulo, descripcion y doctor solo deben estar en la primera fila y NO DEBEN REPETIRSE EN NINGUA OTRA FILA.`;

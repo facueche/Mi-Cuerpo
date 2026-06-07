@@ -12,6 +12,8 @@ export interface CreateExaminationDTO {
     date: Date;
     institution: string;
     title: string;
+    description: string;
+    doctorName: string;
     studies: {
         category: string;
         measurements: {

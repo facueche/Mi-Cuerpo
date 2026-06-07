@@ -82,13 +82,20 @@ export default function ExaminationDetail() {
                     <CardTitle className="text-base font-bold flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <BrainCircuit className="h-5 w-5" /> Resumen de Interpretación Digital
                     </CardTitle>
-                    <CardDescription className="dark:text-slate-400">
-                        Análisis consolidado mediante el motor de estructuración semántica.
-                    </CardDescription>
+                    {examination.description && (
+                        <CardDescription className="dark:text-slate-400">
+                            {examination.description}
+                        </CardDescription>
+                    )}
+                    {examination.doctorName && (
+                        <CardDescription className="dark:text-slate-400">
+                            Pedido por: {examination.doctorName}
+                        </CardDescription>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                        {examination.description || `Este estudio médico contiene ${examination.studies.length} secciones analizadas con un total de ${examination.totalAlertas} biomarcadores fuera de los rangos de referencia normales.`}
+                        {`Este estudio médico contiene ${examination.studies.length} secciones analizadas con un total de ${examination.totalAlertas} biomarcadores fuera de los rangos de referencia normales.`}
                     </p>
                 </CardContent>
             </Card>

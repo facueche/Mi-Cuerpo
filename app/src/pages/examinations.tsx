@@ -15,7 +15,8 @@ import {
     Loader2,
     Trash2,
     X,
-    AlertTriangle
+    AlertTriangle,
+    User
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useState } from "react"
@@ -123,9 +124,12 @@ export default function Examinations() {
                                         </div>
                                         <div className="space-y-1">
                                             <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg">
-                                                {estudio.descripcion}
+                                                {estudio.titulo}
                                             </h3>
                                             <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 dark:text-slate-400">
+                                                <span className="flex items-center gap-1">
+                                                    <User className="h-3 w-3" /> {estudio.doctor}
+                                                </span>
                                                 <span className="flex items-center gap-1">
                                                     <Landmark className="h-3 w-3" /> {estudio.laboratorio}
                                                 </span>
@@ -170,7 +174,7 @@ export default function Examinations() {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                                                onClick={(e) => handleOpenDeleteModal(e, estudio.id, estudio.descripcion)}
+                                                onClick={(e) => handleOpenDeleteModal(e, estudio.id, estudio.titulo)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

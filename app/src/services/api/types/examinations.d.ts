@@ -2,9 +2,10 @@ export type Examination = {
     id: string;
     fecha: string;
     laboratorio: string;
-    descripcion: string;
+    titulo: string;
     alertas: number;
     categorias: string[];
+    doctor: string;
 }
 
 export type ApiMeta = {

@@ -10,7 +10,9 @@ interface UploadCSVParams {
 interface CSVRow {
     fecha: string;
     laboratorio: string;
+    titulo: string;
     descripcion: string;
+    doctor: string;
     categoria: string;
     biomarcador: string;
     resultado: string;
@@ -37,7 +39,7 @@ export default class UploadExaminationCSVService {
             throw new Error("El archivo CSV está vacío o no tiene el formato correcto.");
         }
 
-        // 2. Tomar datos de cabecera de la primera fila (Asumimos consistencia en el archivo)
+        // 2. Tomar datos de cabecera de la primera fila
         const firstRow = rows[0];
 
         // Parsear fecha DD/MM/AAAA a objeto Date de JS nativo
@@ -49,9 +51,9 @@ export default class UploadExaminationCSVService {
 
         for (const row of rows) {
             const value = parseFloat(row.resultado);
-            if (isNaN(value)) continue; // Ignorar filas sin un resultado numérico válido
+            if (isNaN(value)) continue; // Ignorar filas sin un resultado numérico válido (evita cualitativos)
 
-            // Parsear el rango de referencia estándar (Ej: "Menor a 100.0" o "4.0 - 10.0") o nulls
+            // Parsear el rango de referencia estándar
             const { min, max, isOutOfRange } = this.analizarRangosReferencia(value, row.referencia);
 
             if (!studiesMap.has(row.categoria)) {
@@ -78,7 +80,9 @@ export default class UploadExaminationCSVService {
             userId: params.userId,
             date: eventDate,
             institution: firstRow.laboratorio,
-            title: firstRow.descripcion,
+            title: firstRow.titulo,
+            description: firstRow.descripcion,
+            doctorName: firstRow.doctor,
             studies: studiesDTO
         };
 
@@ -91,7 +95,10 @@ export default class UploadExaminationCSVService {
         };
     }
 
-    // Lógica analítica autónoma para procesar límites químicos e inferir desvíos (isOutOfRange)
+    /**
+     * Lógica analítica autónoma para procesar límites químicos e inferir desvíos (isOutOfRange)
+     * Soporta de manera robusta sinónimos clínicos como "hasta", "maximo", "menor", etc.
+     */
     private analizarRangosReferencia(valor: number, referencia: string) {
         let min: number | null = null;
         let max: number | null = null;
@@ -108,20 +115,34 @@ export default class UploadExaminationCSVService {
                 isOutOfRange = valor < min || valor > max;
             }
         }
-        // Escenario B: Techo estricto (Ej: "menor a 100" o "< 130")
-        else if (cleanRef.includes("menor") || cleanRef.includes("<")) {
+        // Escenario B: Techo estricto (Ej: "menor a 100", "< 130", "hasta 1.3", "maximo 5.0")
+        else if (
+            cleanRef.includes("menor") ||
+            cleanRef.includes("<") ||
+            cleanRef.includes("hasta") ||
+            cleanRef.includes("maximo") ||
+            cleanRef.includes("máximo")
+        ) {
             const match = cleanRef.match(/[\d.]+/);
             if (match) {
                 max = parseFloat(match[0]);
-                isOutOfRange = valor >= max;
+                // Si el valor máximo es 1.3, cualquier valor mayor estricto es una alerta (out of range)
+                isOutOfRange = valor > max;
             }
         }
-        // Escenario C: Piso estricto (Ej: "mayor a 10" o "> 5.5")
-        else if (cleanRef.includes("mayor") || cleanRef.includes(">")) {
+        // Escenario C: Piso estricto (Ej: "mayor a 10", "> 5.5", "desde 12.0", "minimo 1.0")
+        else if (
+            cleanRef.includes("mayor") ||
+            cleanRef.includes(">") ||
+            cleanRef.includes("desde") ||
+            cleanRef.includes("minimo") ||
+            cleanRef.includes("mínimo")
+        ) {
             const match = cleanRef.match(/[\d.]+/);
             if (match) {
                 min = parseFloat(match[0]);
-                isOutOfRange = valor <= min;
+                // Si el valor mínimo es 10, cualquier valor menor estricto es una alerta (out of range)
+                isOutOfRange = valor < min;
             }
         }
 

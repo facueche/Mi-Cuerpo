@@ -15,6 +15,7 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
             title: EncryptionService.decrypt(event.title) as string,
             institution: EncryptionService.decrypt(event.institution) as string,
             description: EncryptionService.decrypt(event.description),
+            doctorName: EncryptionService.decrypt(event.doctorName) as string,
             studies: event.studies?.map((study: any) => ({
                 ...study,
                 category: EncryptionService.decrypt(study.category) as string,
@@ -76,11 +77,13 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
     }
 
     async createWithDetails(data: CreateExaminationDTO): Promise<MedicalEvent> {
-        const { userId, date, institution, title, studies } = data;
+        const { userId, date, institution, title, studies, description, doctorName } = data;
 
         // Encriptamos todos los campos descriptivos textuales
         const encryptedTitle = EncryptionService.encrypt(title) as string;
         const encryptedInstitution = EncryptionService.encrypt(institution) as string;
+        const encryptedDescription = EncryptionService.encrypt(description) as string;
+        const encryptedDoctorName = EncryptionService.encrypt(doctorName) as string;
 
         const createdEvent = await prisma.medicalEvent.create({
             data: {
@@ -88,6 +91,8 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
                 date: date,
                 institution: encryptedInstitution,
                 title: encryptedTitle,
+                description: encryptedDescription,
+                doctorName: encryptedDoctorName,
                 studies: {
                     create: studies.map(study => ({
                         category: EncryptionService.encrypt(study.category) as string,

@@ -50,9 +50,10 @@ export default class GetExaminationsService {
                 id: event.id,
                 fecha: fechaFormateada,
                 laboratorio: event.institution || 'No especificado',
-                descripcion: event.title,
+                titulo: event.title,
                 alertas: alertas,
-                categorias: categorias
+                categorias: categorias,
+                doctor: event.doctorName,
             };
         });
 
