@@ -162,6 +162,10 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
                 where: { medicalEventId: id }
             });
 
+            await tx.file.deleteMany({
+                where: { medicalEventId: id }
+            });
+
             await tx.medicalEvent.delete({
                 where: { id }
             });
