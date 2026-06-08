@@ -13,6 +13,9 @@ export function useExaminationDetail(id: string | undefined) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+    const [attachmentsError, setAttachmentsError] = useState<string | null>(null);
+
     const fetchDetail = useCallback(async () => {
         if (!id) return;
 
@@ -29,6 +32,23 @@ export function useExaminationDetail(id: string | undefined) {
         }
     }, [id, examinationsService]);
 
+    const uploadAttachments = useCallback(async (files: File[]) => {
+        if (!id) return;
+
+        setIsUploadingAttachments(true);
+        setAttachmentsError(null);
+        try {
+            await examinationsService.uploadAttachments(id, files);
+            await fetchDetail(); // Sincronización in-memory del agregado tras guardar en PostgreSQL
+        } catch (err: any) {
+            console.error("Error uploading attachments:", err);
+            setAttachmentsError(err.response?.data?.message || "Error al subir los archivos adjuntos.");
+            throw err; // Re-lanzamos para que el componente UI pueda reaccionar (ej. limpiar inputs)
+        } finally {
+            setIsUploadingAttachments(false);
+        }
+    }, [id, examinationsService, fetchDetail]);
+
     useEffect(() => {
         fetchDetail();
     }, [fetchDetail]);
@@ -37,6 +57,9 @@ export function useExaminationDetail(id: string | undefined) {
         examination,
         loading,
         error,
+        isUploadingAttachments,
+        attachmentsError,
+        uploadAttachments,
         refresh: fetchDetail
     };
 }

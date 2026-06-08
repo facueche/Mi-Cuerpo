@@ -27,9 +27,18 @@ export interface CreateExaminationDTO {
     }[];
 }
 
+export interface AddAttachmentsDTO {
+    medicalEventId: string;
+    files: {
+        url: string;
+        fileType: string;
+    }[];
+}
+
 export default interface ExaminationRepository {
     getAll(data: GetAllParams): Promise<[number, MedicalEvent[]]>
     createWithDetails(data: CreateExaminationDTO): Promise<MedicalEvent>
     getById(id: string): Promise<MedicalEvent>
     deleteById(id: string): Promise<void>;
+    addAttachments(data: AddAttachmentsDTO): Promise<void>;
 }

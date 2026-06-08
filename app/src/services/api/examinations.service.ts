@@ -3,7 +3,8 @@ import type {
     PaginatedExaminationsResponse,
     GetExaminationsParams,
     UploadCSVResponse,
-    ExaminationDetailResponse
+    ExaminationDetailResponse,
+    UploadAttachmentsResponse
 } from "./types/examinations";
 
 export default class ExaminationsService {
@@ -50,6 +51,25 @@ export default class ExaminationsService {
 
     public async deleteById(id: string): Promise<{ message: string }> {
         const response = await this.httpClient.delete<{ message: string }>(`/examinations/${id}`);
+        return response.data;
+    }
+
+    public async uploadAttachments(id: string, files: File[]): Promise<UploadAttachmentsResponse> {
+        const formData = new FormData();
+
+        files.forEach((file) => {
+            formData.append("attachments", file);
+        });
+
+        const response = await this.httpClient.post<UploadAttachmentsResponse>(
+            `/examinations/${id}/attachments`,
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            }
+        );
         return response.data;
     }
 }

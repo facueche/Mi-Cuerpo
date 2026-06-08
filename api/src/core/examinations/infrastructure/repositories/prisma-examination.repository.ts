@@ -2,7 +2,7 @@ import { prisma } from "../../../../config/prisma";
 import { MedicalEvent } from "../../../../generated/prisma/client";
 import { EncryptionService } from "../../../shared/application/encryption.service";
 import MedicalEventNotFoundError from "../../domain/errors/medical-event-not-found.error";
-import ExaminationRepository, { CreateExaminationDTO, GetAllParams } from "../../domain/repositories/examination.repository";
+import ExaminationRepository, { AddAttachmentsDTO, CreateExaminationDTO, GetAllParams } from "../../domain/repositories/examination.repository";
 
 export default class PrismaExaminationRepository implements ExaminationRepository {
 
@@ -23,6 +23,10 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
                     ...m,
                     parameter: EncryptionService.decrypt(m.parameter) as string
                 }))
+            })),
+            files: event.files?.map((file: any) => ({
+                ...file,
+                url: EncryptionService.decrypt(file.url) as string
             }))
         };
     }
@@ -161,6 +165,28 @@ export default class PrismaExaminationRepository implements ExaminationRepositor
             await tx.medicalEvent.delete({
                 where: { id }
             });
+        });
+    }
+
+    async addAttachments(data: AddAttachmentsDTO): Promise<void> {
+        const { medicalEventId, files } = data;
+
+        // 1. Verificación de existencia del agregado clínico principal
+        const eventExists = await prisma.medicalEvent.findUnique({
+            where: { id: medicalEventId }
+        });
+
+        if (!eventExists) {
+            throw new MedicalEventNotFoundError();
+        }
+
+        // 2. Persistencia en lote aplicando cifrado FLE sobre las URLs sensibles
+        await prisma.file.createMany({
+            data: files.map(file => ({
+                medicalEventId,
+                fileType: file.fileType,
+                url: EncryptionService.encrypt(file.url) as string // Encriptación estricta de rutas
+            }))
         });
     }
 }

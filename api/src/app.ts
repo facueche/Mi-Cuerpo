@@ -6,6 +6,7 @@ import authRouter from "./core/auth/infrastructure/routes";
 import examinationRouter from "./core/examinations/infrastructure/routes";
 import dashboardRouter from "./core/dashboard/infrastructure/routes";
 import metricsRouter from "./core/metrics/infrastructure/routes";
+import path from "path";
 
 // Create Express server
 const app = express();
@@ -14,6 +15,8 @@ const app = express();
 app.set("port", process.env.PORT ?? 3000);
 
 app.use(corsMiddleware);
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

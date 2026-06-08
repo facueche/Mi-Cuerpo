@@ -7,4 +7,8 @@ node_modules
 # Ignore built ts files
 dist
 
+# Prisma 
 /src/generated/prisma
+
+# Uploads
+uploads

@@ -63,3 +63,8 @@ export type ExaminationDetailResponse = {
     studies: StudyDetail[];
     files: FileDetail[];
 }
+
+export type UploadAttachmentsResponse = {
+    message: string;
+    count: number;
+}
