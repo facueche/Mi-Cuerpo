@@ -36,7 +36,7 @@ restart-one:
 # Aplica migraciones pendientes sin resetear la base de datos
 prisma-deploy:
 	@echo "Aplicando migraciones de producción..."
-	docker exec -it $(API_CONT) npx prisma migrate deploy
+	docker exec -it $(API_CONT) env PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma migrate deploy
 
 # --- Monitoreo y Limpieza ---
 
