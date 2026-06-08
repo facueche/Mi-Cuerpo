@@ -2,8 +2,8 @@
 
 # Variables
 DC=docker compose -f docker-compose.prod.yml
-API_CONT=mi_cuerpo_api
-APP_CONT=mi_cuerpo_app
+API_CONT=mi-cuerpo_api
+APP_CONT=mi-cuerpo_app
 
 .PHONY: up down restart up-one restart-one prisma-deploy logs clean-images
 
@@ -12,6 +12,8 @@ APP_CONT=mi_cuerpo_app
 # Levanta todo, buildea cambios y corre migraciones
 up:
 	$(DC) up -d --build
+	@echo "Esperando a que el contenedor de la API esté completamente listo..."
+	@until [ "$$(docker inspect -f '{{.State.Running}}' mi-cuerpo_api 2>/dev/null)" = "true" ]; do sleep 1; done
 	@$(MAKE) -f ./deploy/Makefile prisma-deploy
 
 down:
