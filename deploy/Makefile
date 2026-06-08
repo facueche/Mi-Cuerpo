@@ -36,7 +36,7 @@ restart-one:
 # Aplica migraciones pendientes sin resetear la base de datos
 prisma-deploy:
 	@echo "Aplicando migraciones de producción..."
-	docker exec -i $(API_CONT) env UV_USE_IO_URING=0 npm_config_arch=arm64 npx prisma migrate deploy
+	docker exec -it $(API_CONT) npx prisma migrate deploy
 
 # --- Monitoreo y Limpieza ---
 
