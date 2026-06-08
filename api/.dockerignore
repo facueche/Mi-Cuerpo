@@ -1,7 +1,22 @@
+# Control de versiones y configuración
 .git
 .gitignore
-node_modules
-vendor
 .env
-api/node_modules
-api/dist
+.env.*
+
+# Dependencias (Evita pisar el npm install de Linux con lo de tu Mac)
+node_modules/
+**/node_modules/
+
+# Archivos de compilación locales (Evita arrastrar el build de tu Mac)
+dist/
+**/dist/
+vendor/
+
+# Archivos temporales y del sistema (Vital si desarrollás en macOS)
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.log
+.npm
+.cache/
