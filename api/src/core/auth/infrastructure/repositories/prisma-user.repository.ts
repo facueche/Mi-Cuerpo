@@ -6,9 +6,6 @@ import UserRepository from '../../domain/repositories/user.repository';
 
 export class PrismaUserRepository implements UserRepository {
 
-    /**
-     * Desencripta transparentemente los datos del usuario antes de enviarlos a las capas superiores de DDD
-     */
     private decryptUser(user: User): User {
         return {
             ...user,
@@ -19,13 +16,12 @@ export class PrismaUserRepository implements UserRepository {
     }
 
     async findByGoogleId(googleId: string): Promise<User> {
-        // Buscamos utilizando el Blind Index determinista del GoogleId para máxima velocidad
         const blindGoogleId = EncryptionService.generateBlindIndex(googleId) as string;
 
         const user = await prisma.user.findFirst({
             where: {
                 OR: [
-                    { googleId: googleId }, // Por compatibilidad si hay datos no encriptados
+                    { googleId: googleId },
                     { googleId: blindGoogleId }
                 ]
             }
@@ -38,7 +34,6 @@ export class PrismaUserRepository implements UserRepository {
     }
 
     async findByEmail(email: string): Promise<User> {
-        // Buscamos utilizando el Blind Index determinista del email para máxima seguridad
         const blindEmail = EncryptionService.generateBlindIndex(email) as string;
 
         const user = await prisma.user.findFirst({
@@ -57,14 +52,13 @@ export class PrismaUserRepository implements UserRepository {
     }
 
     async upsert(data: Partial<User>): Promise<User> {
-        // Generamos Blind Indexes para lookups y encriptamos probabilísticamente el resto
         const blindGoogleId = EncryptionService.generateBlindIndex(data.googleId);
         const encryptedEmail = EncryptionService.encrypt(data.email);
         const encryptedFirstName = EncryptionService.encrypt(data.firstName);
         const encryptedLastName = EncryptionService.encrypt(data.lastName);
 
         const updatedUser = await prisma.user.upsert({
-            where: { googleId: blindGoogleId || data.googleId }, // Intenta buscar por blind index
+            where: { googleId: blindGoogleId || data.googleId },
             update: {
                 lastLogin: new Date(),
                 avatarUrl: data.avatarUrl

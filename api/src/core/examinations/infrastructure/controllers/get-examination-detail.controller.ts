@@ -1,4 +1,3 @@
-// api/src/core/examinations/infrastructure/controllers/get-examination-detail.controller.ts
 import { Request, Response } from 'express';
 import GetExaminationDetailService from '../../application/get-examination-detail.service';
 import PrismaExaminationRepository from '../repositories/prisma-examination.repository';
