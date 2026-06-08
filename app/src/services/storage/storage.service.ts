@@ -4,8 +4,8 @@ const STORAGE_KEYS = {
 } as const;
 
 export const storageService = {
-    getToken: (): string | null => {
-        return localStorage.getItem(STORAGE_KEYS.TOKEN);
+    getToken: (): string => {
+        return localStorage.getItem(STORAGE_KEYS.TOKEN) || "";
     },
 
     setToken: (token: string): void => {
