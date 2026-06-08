@@ -17,7 +17,13 @@ RUN npm install
 
 COPY . .
 
+RUN echo "antes de generar"
+RUN ls /app/node_modules/@prisma/engines/
+
 RUN npx prisma generate
+
+RUN echo "despues de generar"
+RUN ls /app/node_modules/@prisma/engines/
 
 RUN npm run build
 
