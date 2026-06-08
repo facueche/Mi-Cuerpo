@@ -3,7 +3,6 @@ services:
     build:
       context: ./api
       dockerfile: docker/Dockerfile.prod
-    platform: linux/arm64
     container_name: mi-cuerpo_api
     restart: always
     ports:
