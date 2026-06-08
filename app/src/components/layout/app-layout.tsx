@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom' // O la librería de rutas que uses
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,11 +10,21 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import Logo from "@/components/ui/health-logo"
-import { LayoutDashboard, FileText, BarChart3, LogOut, User as UserIcon } from "lucide-react"
+import {
+    LayoutDashboard,
+    FileText,
+    BarChart3,
+    LogOut,
+    User as UserIcon,
+    Sun,
+    Moon
+} from "lucide-react"
 import { storageService } from '@/services/storage/storage.service'
+import { useTheme } from '@/components/theme/theme-provider' // Importación del hook de tema
 
 export default function AppLayout() {
     const location = useLocation()
+    const { theme, setTheme } = useTheme() // Consumo de estados de tema
 
     const user = storageService.getUser();
 
@@ -23,7 +33,6 @@ export default function AppLayout() {
         window.location.href = "/";
     }
 
-    // Configuración de los links de navegación compartidos
     const navigationItems = [
         { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Estudios', href: '/estudios', icon: FileText },
@@ -33,7 +42,7 @@ export default function AppLayout() {
     return (
         <div className="flex h-dvh flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 md:flex-row">
 
-            {/* 1. SIDEBAR: Solo visible en pantallas medianas y grandes (Desktop) */}
+            {/* 1. SIDEBAR (Desktop) */}
             <aside className="hidden w-64 border-r border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950 md:block">
                 <div className="flex items-center gap-3 px-2 pb-8">
                     <Logo className="h-9 w-9" />
@@ -42,7 +51,6 @@ export default function AppLayout() {
                     </span>
                 </div>
 
-                {/* Links de navegación vertical */}
                 <nav className="space-y-1">
                     {navigationItems.map((item) => {
                         const isActive = location.pathname === item.href
@@ -68,7 +76,7 @@ export default function AppLayout() {
             {/* CONTENEDOR PRINCIPAL */}
             <div className="flex flex-1 flex-col overflow-hidden">
 
-                {/* 2. TOPBAR: Header superior común para perfil y responsive móvil */}
+                {/* 2. TOPBAR */}
                 <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950 md:px-8">
                     {/* Logo móvil (Oculto en Desktop) */}
                     <div className="flex items-center gap-2 md:hidden">
@@ -76,42 +84,60 @@ export default function AppLayout() {
                         <span className="font-bold text-slate-900 dark:text-white">Tu Salud</span>
                     </div>
 
-                    {/* Espaciador para desktop, empuja el avatar a la derecha */}
                     <div className="hidden md:block" />
 
-                    {/* Menú de Usuario (Desplegable de Shadcn) */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-100 p-0 dark:bg-slate-800">
-                                {user.avatarUrl ? (
-                                    <img src={user.avatarUrl} alt={user.firstName} className="h-full w-full rounded-full object-cover" />
-                                ) : (
-                                    <UserIcon className="h-5 w-5 text-slate-500" />
-                                )}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56" align="end" forceMount>
-                            <DropdownMenuLabel className="font-normal">
-                                <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
-                                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleLogout} className="text-rose-600 focus:text-rose-600 dark:text-rose-400">
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Cerrar Sesión</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Contenedor de Controles de Usuario alineados a la derecha */}
+                    <div className="flex items-center gap-2">
+
+                        {/* Botón Switcher de Dark Mode */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                            title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                        >
+                            {theme === "dark" ? (
+                                <Sun className="h-5 w-5 text-amber-500 animate-in fade-in zoom-in-75 duration-300" />
+                            ) : (
+                                <Moon className="h-5 w-5 text-blue-600 animate-in fade-in zoom-in-75 duration-300" />
+                            )}
+                        </Button>
+
+                        {/* Menú de Usuario */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-100 p-0 dark:bg-slate-800 shrink-0">
+                                    {user.avatarUrl ? (
+                                        <img src={user.avatarUrl} alt={user.firstName} className="h-full w-full rounded-full object-cover" />
+                                    ) : (
+                                        <UserIcon className="h-5 w-5 text-slate-500" />
+                                    )}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56" align="end" forceMount>
+                                <DropdownMenuLabel className="font-normal">
+                                    <div className="flex flex-col space-y-1">
+                                        <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
+                                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                    </div>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleLogout} className="text-rose-600 focus:text-rose-600 dark:text-rose-400">
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Cerrar Sesión</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </header>
 
-                {/* 3. CONTENIDO DINÁMICO DE LA PANTALLA */}
+                {/* 3. CONTENIDO DINÁMICO */}
                 <main className="flex-1 overflow-y-auto">
                     <Outlet />
                 </main>
 
-                {/* 4. BOTTOM NAVIGATION: Barra fija inferior solo para Celulares (Mobile) */}
+                {/* 4. BOTTOM NAVIGATION (Mobile) */}
                 <nav className="flex h-16 w-full shrink-0 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 md:hidden">
                     {navigationItems.map((item) => {
                         const isActive = location.pathname === item.href
