@@ -9,22 +9,14 @@ RUN apt-get update \
     && apt-get install -y openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
-ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-3.0.x
-
-COPY package*.json ./
-RUN npm install
-
 COPY . .
 
-RUN echo "antes de generar"
-RUN ls /app/node_modules/@prisma/engines/
+ENV PRISMA_CLI_BINARY_TARGETS=linux-arm64-openssl-3.0.x
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
+
+RUN npm install
 
 RUN npx prisma generate
-
-RUN echo "despues de generar"
-RUN ls /app/node_modules/@prisma/engines/
-
 RUN npm run build
 
 
