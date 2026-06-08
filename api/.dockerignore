@@ -1,1 +1,7 @@
+.git
+.gitignore
 node_modules
+vendor
+.env
+api/node_modules
+api/dist
