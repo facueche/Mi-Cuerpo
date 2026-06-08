@@ -33,9 +33,6 @@ RUN apt-get update \
     && apt-get install -y openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
-ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/node_modules/@prisma/engines/schema-engine-linux-arm64-openssl-3.0.x
-
 # PREPARAR PERMISOS: Crear carpeta y asignar dueño antes de cambiar de usuario
 RUN mkdir -p /app/node_modules && chown -R node:node /app
 
