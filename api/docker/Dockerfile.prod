@@ -43,6 +43,8 @@ COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/src/generated ./src/generated
 COPY --chown=node:node package*.json ./
 
+COPY --chown=node:node --from=builder /app/prisma ./prisma
+
 USER node
 
 CMD ["npm", "run", "start"]
