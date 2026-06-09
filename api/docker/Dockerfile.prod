@@ -44,6 +44,7 @@ COPY --chown=node:node --from=builder /app/src/generated ./src/generated
 COPY --chown=node:node package*.json ./
 
 COPY --chown=node:node --from=builder /app/prisma ./prisma
+COPY --chown=node:node --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 USER node
 
