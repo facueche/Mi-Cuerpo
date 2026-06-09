@@ -4,6 +4,8 @@
 DC=docker compose -f docker-compose.prod.yml
 API_CONT=mi-cuerpo_api
 APP_CONT=mi-cuerpo_app
+DB_CONT=mi-cuerpo_db
+BACKUP_DIR=./api/backups
 
 .PHONY: up down restart up-one restart-one prisma-deploy logs clean-images
 
@@ -11,6 +13,7 @@ APP_CONT=mi-cuerpo_app
 
 # Levanta todo, buildea cambios y corre migraciones
 up:
+	@$(MAKE) -f ./deploy/Makefile db-backup
 	$(DC) up -d --build
 	@echo "Esperando a que el contenedor de la API esté completamente listo..."
 	@until [ "$$(docker inspect -f '{{.State.Running}}' mi-cuerpo_api 2>/dev/null)" = "true" ]; do sleep 1; done
@@ -36,7 +39,20 @@ restart-one:
 # Aplica migraciones pendientes sin resetear la base de datos
 prisma-deploy:
 	@echo "Aplicando migraciones de producción..."
-	docker exec -it $(API_CONT) npx prisma migrate deploy
+	docker exec -it $(API_CONT) npx prisma db push --accept-data-loss
+
+# --- Backups (pg_dump) ---
+
+# Genera un respaldo .sql cronológico en la carpeta local de la API
+db-backup:
+	@echo "Generando backup preventivo de la base de datos..."
+	@mkdir -p $(BACKUP_DIR)
+	@if [ "$$(docker ps -q -f name=$(DB_CONT))" ]; then \
+		docker exec -t $(DB_CONT) pg_dumpall -c -U $$(grep DB_USERNAME ./api/.env | cut -d '=' -f2) > $(BACKUP_DIR)/backup_$$(date +%Y%m%d_%H%M%S).sql; \
+		echo "Backup guardado en $(BACKUP_DIR)/"; \
+	else \
+		echo "El contenedor de la base de datos no está corriendo. Se saltea el backup."; \
+	endif
 
 # --- Monitoreo y Limpieza ---
 

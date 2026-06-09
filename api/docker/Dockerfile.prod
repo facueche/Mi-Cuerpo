@@ -34,14 +34,12 @@ RUN apt-get update \
     && apt-get install -y openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/node_modules && chown -R node:node /app
-
-COPY --chown=node:node package*.json ./
-
-USER node
+COPY package*.json ./
 RUN npm install --omit=dev
 
-COPY --chown=node:node --from=builder /app/dist ./dist
-COPY --chown=node:node --from=builder /app/src/generated ./src/generated
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/generated ./src/generated
+
+USER node
 
 CMD ["npm", "run", "start"]
