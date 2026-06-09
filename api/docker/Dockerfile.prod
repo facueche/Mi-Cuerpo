@@ -42,4 +42,4 @@ COPY --from=builder /app/src/generated ./src/generated
 
 USER node
 
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
