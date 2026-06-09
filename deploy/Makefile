@@ -38,7 +38,8 @@ restart-one:
 
 # Aplica migraciones pendientes sin resetear la base de datos
 prisma-deploy:
-	@echo "El schema se sincroniza automáticamente al iniciar el contenedor."
+	@echo "Aplicando migraciones de producción..."
+	docker exec -it $(API_CONT) npx prisma migrate deploy
 
 # --- Backups (pg_dump) ---
 

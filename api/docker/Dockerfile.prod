@@ -34,12 +34,12 @@ RUN apt-get update \
     && apt-get install -y openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm install --omit=dev
+COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/generated ./src/generated
+COPY --chown=node:node --from=builder /app/dist ./dist
+COPY --chown=node:node --from=builder /app/src/generated ./src/generated
+COPY --chown=node:node package*.json ./
 
 USER node
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+CMD ["npm", "run", "start"]
