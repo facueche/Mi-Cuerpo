@@ -48,11 +48,11 @@ db-backup:
 	@echo "Generando backup preventivo de la base de datos..."
 	@mkdir -p $(BACKUP_DIR)
 	@if [ "$$(docker ps -q -f name=$(DB_CONT))" ]; then \
-		docker exec -t $(DB_CONT) pg_dumpall -c -U $$(grep DB_USERNAME ./api/.env | cut -d '=' -f2) > $(BACKUP_DIR)/backup_$$(date +%Y%m%d_%H%M%S).sql; \
+		docker exec -i $(DB_CONT) pg_dumpall -c -U $$(grep DB_USERNAME ./api/.env | cut -d '=' -f2) > $(BACKUP_DIR)/backup_$$(date +%Y%m%d_%H%M%S).sql; \
 		echo "Backup guardado en $(BACKUP_DIR)/"; \
 	else \
 		echo "El contenedor de la base de datos no está corriendo. Se saltea el backup."; \
-	endif
+	fi
 
 # --- Monitoreo y Limpieza ---
 
