@@ -34,8 +34,7 @@ services:
       - mi-cuerpo_core
 
   redis:
-    image: redis:7.2
-    platform: linux/arm64
+    image: redis:7.2-alpine
     container_name: mi-cuerpo_cache
     restart: always
     ports:
