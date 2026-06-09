@@ -12,6 +12,8 @@ RUN apt-get update \
 ENV PRISMA_CLI_BINARY_TARGETS=linux-arm64-openssl-3.0.x
 ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 
+ENV DATABASE_URL="postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
+
 COPY package*.json ./
 RUN npm install
 
